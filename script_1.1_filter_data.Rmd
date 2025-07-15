@@ -1,0 +1,51 @@
+---
+title: "script_1.1_filter_data"
+author: "GKM"
+date: "2025-07-15"
+output:
+  html_document:
+    keep_md: TRUE
+---
+
+This script is a test script to work with 20250616_benchmark sample to set up a pipeline:
+
+* unzip files
+* load into a seurat object
+* (in future scirpts will need to do data integration)
+* filter and quality control
+* normalisation
+* (batch effect correction)
+* feature selection
+* dimensionality reduction
+* export Rds file
+
+
+# Load packages
+```{r}
+library("R.utils")    # need for decompressing files
+library("dplyr")
+library("Seurat")
+library("ggplot2")
+```
+
+# Decompress the files
+```{r}
+# only need to do once
+gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
+gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
+gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
+
+```
+
+# Load data
+```{r fig.width=16, fig.height = 8}
+# load the data
+# normal path is"/scratch/" but have to use "/scratch_tmp/" for now
+v2sct_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=1)
+
+
+
+```
+
+
+
