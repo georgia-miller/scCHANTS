@@ -31,18 +31,207 @@ library("ggplot2")
 # Decompress the files
 ```{r}
 # only need to do once
-gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
-gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
-gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
 
 ```
 
 # Load data
-```{r fig.width=16, fig.height = 8}
-# load the data
-# normal path is"/scratch/" but have to use "/scratch_tmp/" for now
-v2sct_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=1)
+```{r}
+# load the unzipped files
+# gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
+scCHANTS_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
 
+# create seurat object
+# could add arguments for min.cells or min.features to be included
+scCHANTS <- CreateSeuratObject(counts = scCHANTS_data, project = "scCHANTS")
+
+Assays(scCHANTS)
+```
+
+Rename HTO and ADT ids
+```{r}
+# add HTO and ADT assay to the seurat object as it is by default ignored by CreateSeuratObject
+# extract feature names
+HTO_names <- rownames(scCHANTS_data$`Antibody Capture`) [1:14]
+ADT_names <- rownames(scCHANTS_data$`Antibody Capture`) [15:18]
+
+# extract count matrices
+HTO_counts <- scCHANTS_data$`Antibody Capture` [HTO_names, , drop=FALSE]
+ADT_counts <- scCHANTS_data$`Antibody Capture` [ADT_names, , drop=FALSE]
+
+# check names and order
+rownames(HTO_counts)
+rownames(ADT_counts)
+
+# create mapping from long to short names. using - not _ as cannot have underscores in seurat object names
+name_to_id <- c(
+  "TotalSeq™-C0251 anti-human Hashtag 1 Antibody"  = "HTO-1",
+  "TotalSeq™-C0252 anti-human Hashtag 2 Antibody"  = "HTO-2",
+  "TotalSeq™-C0253 anti-human Hashtag 3 Antibody"  = "HTO-3",
+  "TotalSeq™-C0254 anti-human Hashtag 4 Antibody"  = "HTO-4",
+  "TotalSeq™-C0255 anti-human Hashtag 5 Antibody"  = "HTO-5",
+  "TotalSeq™-C0256 anti-human Hashtag 6 Antibody"  = "HTO-6",
+  "TotalSeq™-C0257 anti-human Hashtag 7 Antibody"  = "HTO-7",
+  "TotalSeq™-C0258 anti-human Hashtag 8 Antibody"  = "HTO-8",
+  "TotalSeq™-C0259 anti-human Hashtag 9 Antibody"  = "HTO-9",
+  "TotalSeq™-C0260 anti-human Hashtag 10 Antibody" = "HTO-10",
+  "TotalSeq™-C0296 anti-human Hashtag 11 Antibody" = "HTO-11",
+  "TotalSeq™-C0262 anti-human Hashtag 12 Antibody" = "HTO-12",
+  "TotalSeq™-C0263 anti-human Hashtag 13 Antibody" = "HTO-13",
+  "TotalSeq™-C0264 anti-human Hashtag 14 Antibody" = "HTO-14",
+  
+  # ADTs
+  "TotalSeq-C anti human CD14 (clone M5E2, cat 301859)"             = "ADT-CD14",
+  "TotalSeq-C anti human CD16 (clone 3G8 cat 302065)"               = "ADT-CD16",
+  "TotalSeq™-C0045 anti-human CD4 Antibody (clone SK3, cat 344651)" = "ADT-CD4",
+  "TotalSeq™-C0046 anti-human CD8 Antibody (clone SK1, cat 344753)" = "ADT-CD8"
+)
+
+# rename the rows (features) using the mapping
+rownames(HTO_counts) <- unname(name_to_id[rownames(HTO_counts)])
+rownames(ADT_counts) <- unname(name_to_id[rownames(ADT_counts)])
+
+# check names have changed
+rownames(HTO_counts)
+rownames(ADT_counts)
+```
+
+Add HTO and ADT assays to seurat object
+```{r}
+# add HTO assay
+scCHANTS[["HTO"]] <- CreateAssayObject(counts = HTO_counts)
+
+# add ADT assay
+scCHANTS[["ADT"]] <- CreateAssayObject(counts = ADT_counts)
+
+# validate assays were added
+Assays(scCHANTS)
+```
+
+
+```{r}
+# check default assay
+DefaultAssay(scCHANTS)
+
+# if needed, can change default assay
+DefaultAssay(scCHANTS) <- "RNA"
+
+# check number of cells (samples) and features looks right
+scCHANTS
+scCHANTS@assays$HTO
+scCHANTS@assays$ADT
+
+# free space
+rm(scCHANTS_data)
+```
+
+# Demulitplex HTOs
+
+https://satijalab.org/seurat/articles/hashing_vignette
+HTODemux:
+
+* Perform a k-medoid clustering on the normalized HTO values, which initially separates cells into K(# of samples)+1 clusters.
+* Calculate a ‘negative’ distribution for HTO. For each HTO, the cluster with the lowest average value is used as the negative group.
+* For each HTO, fit a negative binomial distribution to the negative cluster. 0.99 quantile of this distribution is used as a threshold.
+* Based on these thresholds, each cell is classified as positive or negative for each HTO.
+* Cells that are positive for more than one HTOs are annotated as doublets.
+
+```{r}
+DefaultAssay(scCHANTS) <- "HTO"
+
+# normalise HTO counts, standard is centered log-ratio (CLR) transformation
+scCHANTS <- NormalizeData(scCHANTS, assay = "HTO", normalization.method = "CLR")
+
+# using default threshold (quantile of inferred negative distribution for eahc hashtag), default kfunc is clara (for fast k-medoids clustering on large applications, it is faster and more memory-efficient as it repeatedly samples subsets and clusters those)
+scCHANTS <- HTODemux(scCHANTS, assay = "HTO", positive.quantile = 0.99, kfunc = "clara")
+```
+
+Visualise demultiplexing
+```{r}
+# look at classification
+table(scCHANTS$HTO_classification.global)
+
+# visualise enrichment for some HTOs, group cells based on the max HTO signal
+Idents(scCHANTS) <- "HTO_maxID"
+RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2)
+
+# look at pairs to see if mutually exclusive
+FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
+
+# compare number UMIs
+Idents(scCHANTS) <- "HTO_classification.global"
+VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE)
+```
+
+```{r}
+# remove negative cells from the object
+scCHANTS_subset <- subset(scCHANTS, idents = "Negative", invert = TRUE)
+
+# calculate a tSNE embedding of the HTO data
+DefaultAssay(scCHANTS_subset) <- "HTO"
+
+scCHANTS_subset <- ScaleData(scCHANTS_subset, features = rownames(scCHANTS_subset),
+    verbose = FALSE)
+
+scCHANTS_subset <- RunPCA(scCHANTS_subset, features = rownames(scCHANTS_subset), approx = FALSE)
+
+scCHANTS_subset <- RunUMAP(scCHANTS_subset, dims = 1:8, perplexity = 100)
+
+DimPlot(scCHANTS_subset)
+```
+Create a heatmap
+```{r}
+HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
+```
+
+Visualise RNA clustering, look if any batch effects
+```{r}
+# extract the singlets
+scCHANTS_singlets <- subset(scCHANTS, idents = "Singlet")
+
+DefaultAssay(scCHANTS_singlets) <- "RNA"
+
+# set "counts.Gene Expression" to "counts" so cna run find vairbale features on just this assay, not antibody capture as well 
+scCHANTS_singlets <- SetAssayData(object = scCHANTS_singlets, assay = "RNA", layer = "counts", new.data = GetAssayData(scCHANTS_singlets, assay = "RNA", layer = "counts.Gene Expression") )
+
+# select the top 1000 most variable features
+scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layers = "counts")
+
+# normalise and scale RNA data, only scale the variable features here for efficiency
+scCHANTS_singlets <- NormalizeData(scCHANTS_singlets, assay = "RNA", layer = "counts")
+scCHANTS_singlets <- ScaleData(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
+
+# run PCA
+scCHANTS_singlets <- RunPCA(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
+
+# select the top 10 PCs for clustering and tSNE based on PCElbowPlot
+scCHANTS_singlets <- FindNeighbors(scCHANTS_singlets, reduction = "pca", dims = 1:10)
+scCHANTS_singlets <- FindClusters(scCHANTS_singlets, resolution = 0.6, verbose = FALSE)
+scCHANTS_singlets <- RunUMAP(scCHANTS_singlets, reduction = "pca", dims = 1:10)
+
+# project singlet identities on UMAP visualisation
+DimPlot(scCHANTS_singlets, group.by = "HTO_classification")
+
+# show only a subset
+subset1 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-1", "HTO-2", "HTO-3") )
+DimPlot(subset1, group.by = "HTO_classification")
+
+subset2 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-7", "HTO-8", "HTO-9") )
+DimPlot(subset2, group.by = "HTO_classification")
+
+```
+
+
+
+
+# Look at metadata
+```{r}
+metadata <- scCHANTS@meta.data
+dim(metadata)
+
+summary(metadata$nCount_RNA)
 
 
 ```
