@@ -127,9 +127,13 @@ scCHANTS@assays$ADT
 rm(scCHANTS_data)
 ```
 
+
 # Demulitplex HTOs
+For 20250616 data, there is shallow sequencing depth which is resulting in low read cutoffs (2-18, would expect >100), flattened ridgeplots (expect a clear bimodal distribution at 0 and positives not shallow enrichment curves) and (when normalised across cells) low negative calling. Also shown by low peak of total HTO counts per cell histogram
+Should check in future experiments whether to normalise across features or cells (use margin argument)
 
 https://satijalab.org/seurat/articles/hashing_vignette
+
 HTODemux:
 
 * Perform a k-medoid clustering on the normalized HTO values, which initially separates cells into K(# of samples)+1 clusters.
@@ -142,9 +146,11 @@ HTODemux:
 DefaultAssay(scCHANTS) <- "HTO"
 
 # normalise HTO counts, standard is centered log-ratio (CLR) transformation
-scCHANTS <- NormalizeData(scCHANTS, assay = "HTO", normalization.method = "CLR")
+# can normalise across features (margin = 1) or across cells (margin = 2)
+# comment on github form satija lab that recommend normalising across tags if variation between hash performances but since have very low signals, will try across cells
+scCHANTS <- NormalizeData(scCHANTS, assay = "HTO", normalization.method = "CLR", margin = 2)
 
-# using default threshold (quantile of inferred negative distribution for eahc hashtag), default kfunc is clara (for fast k-medoids clustering on large applications, it is faster and more memory-efficient as it repeatedly samples subsets and clusters those)
+# using default threshold (quantile of inferred negative distribution for each hashtag), default kfunc is clara (for fast k-medoids clustering on large applications, it is faster and more memory-efficient as it repeatedly samples subsets and clusters those)
 scCHANTS <- HTODemux(scCHANTS, assay = "HTO", positive.quantile = 0.99, kfunc = "clara")
 ```
 
@@ -166,27 +172,30 @@ VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE)
 ```
 
 ```{r}
-# remove negative cells from the object
-scCHANTS_subset <- subset(scCHANTS, idents = "Negative", invert = TRUE)
+# first remove negative cells from the object
+scCHANTS_nonegs <- subset(scCHANTS, idents = "Negative", invert = TRUE)
 
 # calculate a tSNE embedding of the HTO data
-DefaultAssay(scCHANTS_subset) <- "HTO"
+DefaultAssay(scCHANTS_nonegs) <- "HTO"
 
-scCHANTS_subset <- ScaleData(scCHANTS_subset, features = rownames(scCHANTS_subset),
+scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs),
     verbose = FALSE)
 
-scCHANTS_subset <- RunPCA(scCHANTS_subset, features = rownames(scCHANTS_subset), approx = FALSE)
+scCHANTS_nonegs <- RunPCA(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), approx = FALSE)
 
-scCHANTS_subset <- RunUMAP(scCHANTS_subset, dims = 1:8, perplexity = 100)
+scCHANTS_nonegs <- RunUMAP(scCHANTS_nonegs, dims = 1:8, perplexity = 100)
 
-DimPlot(scCHANTS_subset)
+DimPlot(scCHANTS_nonegs)
+Idents(scCHANTS_nonegs) <- "HTO_classification"
+DimPlot(scCHANTS_nonegs)
 ```
-Create a heatmap
+Create a heatmap of HTO signals
 ```{r}
 HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
 ```
 
-Visualise RNA clustering, look if any batch effects
+Visualise RNA clustering
+This is just mock to check for batch effects. will do clusteirng etc later on after QC
 ```{r}
 # extract the singlets
 scCHANTS_singlets <- subset(scCHANTS, idents = "Singlet")
@@ -221,20 +230,263 @@ DimPlot(subset1, group.by = "HTO_classification")
 subset2 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-7", "HTO-8", "HTO-9") )
 DimPlot(subset2, group.by = "HTO_classification")
 
+rm(subset1, subset2)
+```
+
+## Check HTO data
+20250616 data, shallow sequencing has lead to low HTO signal, check the signal here
+```{r}
+# check HTO counts
+HTO_counts <- GetAssayData(scCHANTS, assay = "HTO", layer = "counts")
+summary(Matrix::colSums(HTO_counts))
+## shows UMI counts are not too low
+
+## checked HTOs are labelled as antibody capture in cell ranger
+# check library size
+hist(Matrix::colSums(HTO_counts), breaks = 150, main = "Total HTO UMIs per Cell", xlab = "HTO UMIs")
+## not peaking around 0 which is good
+
 ```
 
 
 
 
-# Look at metadata
-```{r}
-metadata <- scCHANTS@meta.data
-dim(metadata)
 
+# Reassign scCHANTS to only singlets
+```{r}
+scCHANTS_full <- scCHANTS
+scCHANTS <- subset(scCHANTS, subset = HTO_classification.global == "Singlet")
+
+# remove to save memory
+rm(ADT_counts, HTO_counts, ADT_names, HTO_names, name_to_id, scCHANTS_nonegs, scCHANTS_singlets)
+
+```
+
+# Add metadata
+```{r}
+# examine existing metadata
+metadata <- scCHANTS@meta.data
+
+dim(metadata)
+head(metadata)
 summary(metadata$nCount_RNA)
 
+# read in additional sample metadata
+metadata_samples <- read.csv("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/sample_metadata.csv")
+
+head(metadata_samples)
+
+# steps to add to seurat object
+
+# check HTO values are all singles, no doublets
+table(scCHANTS$HTO_classification) 
+
+# align each cell's HTO id to row in the metadata_samples, rownames here represent HTOs but can't have duplicate rownames hence 4.1 etc
+hto_info <- metadata_samples[match(scCHANTS$HTO_classification, metadata_samples$HTO), ]
+head(hto_info)
+
+# add each row to new vairbale in metadata
+scCHANTS$sample_id <- hto_info$sample
+scCHANTS$timepoint <- hto_info$timepoint
+scCHANTS$treatment <- hto_info$treatment
+scCHANTS$PBMC_or_T <- hto_info$PBMC_or_T
+
+# check new metadata
+metadata <- scCHANTS@meta.data
+
+dim(metadata)
+colnames(metadata)
+metadata[14:17, 14:17]
+```
+
+# Separate PBMC and sorted T cell samples
+```{r}
+DefaultAssay(scCHANTS) <- "RNA"
+
+scCHANTS_pbmc <- subset(scCHANTS, subset = PBMC_or_T == "PBMC")
+DefaultAssay(scCHANTS_pbmc) <- "RNA"
+
+scCHANTS_t <- subset(scCHANTS, subset = PBMC_or_T == "T")
+DefaultAssay(scCHANTS_t) <- "RNA"
+```
+
+# PBMC pre-processing
+
+## Quality control on PBMCs
+```{r}
+# calculate mt contamination and add column to metadata
+scCHANTS_pbmc[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_pbmc, pattern = "^MT-")
+
+# calculate mt contamination and add column to metadata
+scCHANTS_pbmc[["percent_rb"]] <- PercentageFeatureSet(scCHANTS_pbmc, pattern = "^RP[SL]")
+
+# plot on violin plot
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3)
+## before filtering if mt counts are at 0 check you're in RNA assay as default, check head(rownames(scCHANTS_pbmc)) shows gene names
+
+
+# feature scatter
+p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "timepoint") +
+  theme(legend.position="none")
+p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", group.by = "timepoint") + 
+  theme(legend.position="none")
+p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", group.by = "timepoint") +
+  theme(legend.position="none")
+p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", group.by = "timepoint") +
+  theme(legend.position="none")
+(p1 + p2) / (p3 + p4)
+
+```
+
+Do subsetting
+```{r}
+# can subset straightaway based on QC metrics e.g. :
+#scCHANTS_pbmc <- subset(scCHANTS_pbmc, subset = nFeature_RNA > 200  & nFeature_RNA < 2500 & percent_mt < 5) 
+
+# or assign new metadata column
+# start with all cells labeled as "initial"
+scCHANTS_pbmc$QC <- "initial"
+
+# label low nFeature_RNA (< 150)
+## i.e. if nFeature_RNA < 150 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
+
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$nFeature_RNA < 150 & scCHANTS_pbmc$QC == "initial",
+  "low_nFeature",
+  scCHANTS_pbmc$QC
+)
+
+# label high nFeature_RNA (> 2000)
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$nFeature_RNA > 2000 & scCHANTS_pbmc$QC == "initial",
+  "high_nFeature",
+  scCHANTS_pbmc$QC
+)
+
+# label high mitochondrial content (> 5%)
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$percent_mt > 5 & scCHANTS_pbmc$QC == "initial",
+  "high_mt",
+  scCHANTS_pbmc$QC
+)
+
+# label combined: low_nFeature + high_mt
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$nFeature_RNA < 150 & scCHANTS_pbmc$percent_mt > 5 & scCHANTS_pbmc$QC != "pass",
+  "low_nFeature_high_mt",
+  scCHANTS_pbmc$QC
+)
+
+# label combined: high_nFeature + high_mt
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$nFeature_RNA > 2000 & scCHANTS_pbmc$percent_mt > 5 & scCHANTS_pbmc$QC != "pass",
+  "high_nFeature_high_mt",
+  scCHANTS_pbmc$QC
+)
+
+# finally, label cells that pass all filters
+scCHANTS_pbmc$QC <- ifelse(
+  scCHANTS_pbmc$nFeature_RNA >= 150 &
+    scCHANTS_pbmc$nFeature_RNA <= 2000 &
+    scCHANTS_pbmc$percent_mt <= 5 &
+    scCHANTS_pbmc$QC == "initial",
+  "pass",
+  scCHANTS_pbmc$QC
+)
+
+```
+
+Replot QC plots, separated by QC result
+```{r}
+# plot on violin plot
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, , group.by = "QC")
+
+# feature scatter, coloured by QC overlaid
+p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint", group.by = "QC") +
+  theme(legend.position="none")
+p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "timepoint", group.by = "QC") + 
+  theme(legend.position="none")
+p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
+  theme(legend.position="none")
+p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
+  theme(legend.position="none")
+(p1 + p2) / (p3 + p4)
+
+
+# feature scatter, coloured by QC split
+p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none")
+p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "QC", group.by = "QC") + 
+  theme(legend.position="none")
+p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none")
+p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none")
+(p1 + p2) / (p3 + p4)
+
+scCHANTS_pbmc <- subset(scCHANTS_pbmc, subset = QC == "pass")
+```
+
+## Normalisaiton of PBMCs
+Default is lognormalise, a global-scaling normalisation method normalises feature expression measurements for each cell by total expression, x by 10,000 by default and log-transforms the result. It stores these in [["RNA"]]$data
+Assumes each cell originally contains same number of RNA molecules
+Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
+```{r}
+scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, normalization.method = "LogNormalize", scale.factor = 10000)
+
+# find variable features
+scCHANTS_pbmc <- FindVariableFeatures(scCHANTS_pbmc, selection.method = "vst", nfeatures = 2000)
+
+# identify 10 most highly variable genes
+top10_features <- head(VariableFeatures(scCHANTS_pbmc), 10)
+
+# to plot these 10 most variable genes
+p1 <- VariableFeaturePlot(scCHANTS_pbmc)
+p2 <- VariableFeaturePlot(scCHANTS_pbmc) %>% LabelPoints(points = top10_features, repel = TRUE)
+p1 + p2
+
+# scale data
+all.genes <- rownames(scCHANTS_pbmc)
+scCHANTS_pbmc <- ScaleData(scCHANTS_pbmc, features = all.genes)
+```
+
+## Dim red on PBMC
+```{r}
+# run PCA, variable features already calculated and in the saved Rds file
+scCHANTS_pbmc <- RunPCA(scCHANTS_pbmc, features = VariableFeatures(object = scCHANTS_pbmc))
+
+# visualise
+VizDimLoadings(scCHANTS_pbmc, dims = 1:2, reduction = "pca")
+
+DimHeatmap(scCHANTS_pbmc, dims = 1, cells = 500, balanced = TRUE)
+
+DimHeatmap(pbmc, dims = 1:15, cells = 500, balanced = TRUE)
+
+# generate elbow plot and save as a variable
+elbow_plot <- ElbowPlot(scCHANTS_pbmc) +
+  labs(title = paste(scCHANTS_pbmc_name, "elbowplot", sep = "_"))
+## decide on pc number
+
+# clustering
+scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:10) 
+
+scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 1.0)
+
+scCHANTS_pbmc <- RunUMAP(scCHANTS_pbmc, dims = 1:10)
+
+# plot umap coloured by cell_type and cell_type_lowerres
+DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "sample_id")
+DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "timepoint")
+
+```
+
+# save PBMC pre-processed RDS (takes a long time)
+```{r}
+#saveRDS(object=scCHANTS_pbmc, file ="/scratch_tmp/prj/id_hill_sims_wellcda/1M-scBloodNL/scCHANTS_pbmc_processed.Rds")
 
 ```
 
 
+# T cell pre-processing
+## Quality control on T cells
 
