@@ -109,15 +109,9 @@ scCHANTS[["ADT"]] <- CreateAssayObject(counts = ADT_counts)
 # validate assays were added
 Assays(scCHANTS)
 
-# remove antibody capture layer from RNA assay
-Layers(scCHANTS)
-scCHANTS@assays$RNA@layers$`counts.Antibody Capture` <- NULL
-
 # rename "counts.Gene Expression" to "counts"
+Layers(scCHANTS@assays$RNA)
 scCHANTS <- SetAssayData(object = scCHANTS, assay = "RNA", layer = "counts", new.data = GetAssayData(scCHANTS, assay = "RNA", layer = "counts.Gene Expression") )
-
-# remove old layer
-scCHANTS@assays$RNA@layers$`counts.Gene Expression` <- NULL
 
 # validate layers
 Layers(scCHANTS)
@@ -132,7 +126,7 @@ DefaultAssay(scCHANTS)
 DefaultAssay(scCHANTS) <- "RNA"
 
 # check number of cells (samples) and features looks right
-scCHANTS
+scCHANTS@assays$RNA
 scCHANTS@assays$HTO
 scCHANTS@assays$ADT
 
@@ -193,7 +187,7 @@ length(Cells(scCHANTS_nonegs))
 length(Cells(scCHANTS_nonegs[["RNA"]]))
 length(Cells(scCHANTS_nonegs[["HTO"]]))
 length(Cells(scCHANTS_nonegs[["ADT"]]))
-# shows that RNA did not subset
+## e.g. if counts.Gene Expression and counts.Antibody Capture are removed then RNA layer is no longer subsetted
 
 # step to ensure subsetting
 scCHANTS_nonegs <- subset(scCHANTS, HTO_classification.global != "Negative", assay = "RNA")
@@ -213,11 +207,6 @@ DimPlot(scCHANTS_nonegs)
 DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
 
 
-Cells(scCHANTS_nonegs) %>%  length()
-Cells(scCHANTS_nonegs[["RNA"]])  %>%  length()# Cells in RNA assay
-Cells(scCHANTS_nonegs[["ADT"]])  %>%  length()# Cells in ADT assay (if present)
-Cells(scCHANTS_nonegs[["HTO"]]) %>%  length()
-
 ```
 Create a heatmap of HTO signals
 ```{r}
@@ -225,7 +214,7 @@ HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
 ```
 
 Visualise RNA clustering
-This is just mock to check for batch effects. will do clusteirng etc later on after QC
+This is just mock to check for batch effects. will do clustering etc later on after QC
 ```{r}
 # extract the singlets
 scCHANTS_singlets <- subset(scCHANTS, HTO_classification.global = "Singlet")
@@ -335,14 +324,25 @@ metadata[14:17, 14:17]
 ```
 
 # Separate PBMC and sorted T cell samples
+CHeck all assays have same number of cells after
 ```{r}
+print("Full scCHANTS")
 DefaultAssay(scCHANTS) <- "RNA"
+length(Cells(scCHANTS@assays$RNA))
+length(Cells(scCHANTS@assays$HTO))
+length(Cells(scCHANTS@assays$ADT))
 
+print("PBMC filtered scCHANTS")
 scCHANTS_pbmc <- subset(scCHANTS, subset = PBMC_or_T == "PBMC")
-DefaultAssay(scCHANTS_pbmc) <- "RNA"
+length(Cells(scCHANTS_pbmc@assays$RNA))
+length(Cells(scCHANTS_pbmc@assays$HTO))
+length(Cells(scCHANTS_pbmc@assays$ADT))
 
+print("T cells filtered scCHANTS")
 scCHANTS_t <- subset(scCHANTS, subset = PBMC_or_T == "T")
-DefaultAssay(scCHANTS_t) <- "RNA"
+length(Cells(scCHANTS_t@assays$RNA))
+length(Cells(scCHANTS_t@assays$HTO))
+length(Cells(scCHANTS_t@assays$ADT))
 ```
 
 # PBMC pre-processing
@@ -433,6 +433,16 @@ scCHANTS_pbmc$QC <- ifelse(
 
 Replot QC plots, separated by QC result
 ```{r}
+# look at proportion of QC results
+table(scCHANTS_pbmc@meta.data$QC)
+
+pbmc_qc <- table(scCHANTS_pbmc@meta.data$QC) %>%  
+  as.data.frame() %>% 
+  mutate(percent = Freq / sum(Freq) * 100)
+ggplot(pbmc_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
+  geom_col()
+
+
 # plot on violin plot
 VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, , group.by = "QC")
 
@@ -458,8 +468,14 @@ p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent
 p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
   theme(legend.position="none")
 (p1 + p2) / (p3 + p4)
+```
 
+Subset QCd PBMCs
+```{r}
 scCHANTS_pbmc <- subset(scCHANTS_pbmc, subset = QC == "pass")
+length(Cells(scCHANTS_pbmc@assays$RNA))
+length(Cells(scCHANTS_pbmc@assays$HTO))
+length(Cells(scCHANTS_pbmc@assays$ADT))
 ```
 
 ## Normalisaiton of PBMCs
