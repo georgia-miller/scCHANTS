@@ -108,6 +108,19 @@ scCHANTS[["ADT"]] <- CreateAssayObject(counts = ADT_counts)
 
 # validate assays were added
 Assays(scCHANTS)
+
+# remove antibody capture layer from RNA assay
+Layers(scCHANTS)
+scCHANTS@assays$RNA@layers$`counts.Antibody Capture` <- NULL
+
+# rename "counts.Gene Expression" to "counts"
+scCHANTS <- SetAssayData(object = scCHANTS, assay = "RNA", layer = "counts", new.data = GetAssayData(scCHANTS, assay = "RNA", layer = "counts.Gene Expression") )
+
+# remove old layer
+scCHANTS@assays$RNA@layers$`counts.Gene Expression` <- NULL
+
+# validate layers
+Layers(scCHANTS)
 ```
 
 
@@ -160,34 +173,51 @@ Visualise demultiplexing
 table(scCHANTS$HTO_classification.global)
 
 # visualise enrichment for some HTOs, group cells based on the max HTO signal
-Idents(scCHANTS) <- "HTO_maxID"
-RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2)
+RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2, group.by = "HTO_maxID")
 
 # look at pairs to see if mutually exclusive
 FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
 
 # compare number UMIs
-Idents(scCHANTS) <- "HTO_classification.global"
-VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE)
+VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE, group.by = "HTO_classification.global")
 ```
 
 ```{r}
 # first remove negative cells from the object
-scCHANTS_nonegs <- subset(scCHANTS, idents = "Negative", invert = TRUE)
+scCHANTS_nonegs <- subset(scCHANTS, subset = HTO_classification.global != "Negative")
+DefaultAssay(scCHANTS) <- "RNA"
+
+# should check numbers of cells after subsetting as does not always subset every assay
+length(Cells(scCHANTS))
+length(Cells(scCHANTS_nonegs))
+length(Cells(scCHANTS_nonegs[["RNA"]]))
+length(Cells(scCHANTS_nonegs[["HTO"]]))
+length(Cells(scCHANTS_nonegs[["ADT"]]))
+# shows that RNA did not subset
+
+# step to ensure subsetting
+scCHANTS_nonegs <- subset(scCHANTS, HTO_classification.global != "Negative", assay = "RNA")
+
 
 # calculate a tSNE embedding of the HTO data
 DefaultAssay(scCHANTS_nonegs) <- "HTO"
 
 scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs),
-    verbose = FALSE)
+    verbose = TRUE)
 
 scCHANTS_nonegs <- RunPCA(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), approx = FALSE)
 
 scCHANTS_nonegs <- RunUMAP(scCHANTS_nonegs, dims = 1:8, perplexity = 100)
 
 DimPlot(scCHANTS_nonegs)
-Idents(scCHANTS_nonegs) <- "HTO_classification"
-DimPlot(scCHANTS_nonegs)
+DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
+
+
+Cells(scCHANTS_nonegs) %>%  length()
+Cells(scCHANTS_nonegs[["RNA"]])  %>%  length()# Cells in RNA assay
+Cells(scCHANTS_nonegs[["ADT"]])  %>%  length()# Cells in ADT assay (if present)
+Cells(scCHANTS_nonegs[["HTO"]]) %>%  length()
+
 ```
 Create a heatmap of HTO signals
 ```{r}
@@ -198,12 +228,9 @@ Visualise RNA clustering
 This is just mock to check for batch effects. will do clusteirng etc later on after QC
 ```{r}
 # extract the singlets
-scCHANTS_singlets <- subset(scCHANTS, idents = "Singlet")
+scCHANTS_singlets <- subset(scCHANTS, HTO_classification.global = "Singlet")
 
 DefaultAssay(scCHANTS_singlets) <- "RNA"
-
-# set "counts.Gene Expression" to "counts" so cna run find vairbale features on just this assay, not antibody capture as well 
-scCHANTS_singlets <- SetAssayData(object = scCHANTS_singlets, assay = "RNA", layer = "counts", new.data = GetAssayData(scCHANTS_singlets, assay = "RNA", layer = "counts.Gene Expression") )
 
 # select the top 1000 most variable features
 scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layers = "counts")
@@ -255,7 +282,15 @@ hist(Matrix::colSums(HTO_counts), breaks = 150, main = "Total HTO UMIs per Cell"
 # Reassign scCHANTS to only singlets
 ```{r}
 scCHANTS_full <- scCHANTS
+length(Cells(scCHANTS))
 scCHANTS <- subset(scCHANTS, subset = HTO_classification.global == "Singlet")
+
+# check cell numbers
+length(Cells(scCHANTS))
+length(Cells(scCHANTS[["RNA"]]))
+length(Cells(scCHANTS[["HTO"]]))
+length(Cells(scCHANTS[["ADT"]]))
+## not subsetting RNA assay
 
 # remove to save memory
 rm(ADT_counts, HTO_counts, ADT_names, HTO_names, name_to_id, scCHANTS_nonegs, scCHANTS_singlets)
