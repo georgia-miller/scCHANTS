@@ -478,11 +478,12 @@ length(Cells(scCHANTS_pbmc@assays$HTO))
 length(Cells(scCHANTS_pbmc@assays$ADT))
 ```
 
-## Normalisaiton of PBMCs
+## Normalisation of PBMCs
 Default is lognormalise, a global-scaling normalisation method normalises feature expression measurements for each cell by total expression, x by 10,000 by default and log-transforms the result. It stores these in [["RNA"]]$data
 Assumes each cell originally contains same number of RNA molecules
 Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
 ```{r}
+DefaultAssay(scCHANTS_pbmc) <- "RNA"
 scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, normalization.method = "LogNormalize", scale.factor = 10000)
 
 # find variable features
@@ -495,6 +496,7 @@ top10_features <- head(VariableFeatures(scCHANTS_pbmc), 10)
 p1 <- VariableFeaturePlot(scCHANTS_pbmc)
 p2 <- VariableFeaturePlot(scCHANTS_pbmc) %>% LabelPoints(points = top10_features, repel = TRUE)
 p1 + p2
+# NAs introduced are all for HTO or ADT rows
 
 # scale data
 all.genes <- rownames(scCHANTS_pbmc)
@@ -513,10 +515,20 @@ DimHeatmap(scCHANTS_pbmc, dims = 1, cells = 500, balanced = TRUE)
 
 DimHeatmap(pbmc, dims = 1:15, cells = 500, balanced = TRUE)
 
+# determine pc number to use
 # generate elbow plot and save as a variable
 elbow_plot <- ElbowPlot(scCHANTS_pbmc) +
   labs(title = paste(scCHANTS_pbmc_name, "elbowplot", sep = "_"))
-## decide on pc number
+
+# if not clear then do this calculation
+pct <- scCHANTS_pbmc[["pca"]]@stdev / sum(scCHANTS_pbmc[["pca"]]@stdev) * 100
+# calculate cumulative percents for each PC
+cumu <- cumsum(pct)
+# determine the difference between variation of PC and subsequent PC
+co1 <- sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1), decreasing = T)[1] + 1
+# last point where difference in % of variation is more than 0.1%.
+co1
+## 
 
 # clustering
 scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:10) 
