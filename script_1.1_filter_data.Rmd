@@ -26,7 +26,16 @@ library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
 library("ggplot2")
+library("clustree")
+library("patchwork")
 ```
+
+# Create file path for saving plots
+Must create this directory and sub-directories e.g. demultiplex, QC, PCA, others
+```{r}
+file_path <- "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/plots"
+```
+
 
 # Decompress the files
 ```{r}
@@ -109,10 +118,6 @@ scCHANTS[["ADT"]] <- CreateAssayObject(counts = ADT_counts)
 # validate assays were added
 Assays(scCHANTS)
 
-# rename "counts.Gene Expression" to "counts"
-Layers(scCHANTS@assays$RNA)
-scCHANTS <- SetAssayData(object = scCHANTS, assay = "RNA", layer = "counts", new.data = GetAssayData(scCHANTS, assay = "RNA", layer = "counts.Gene Expression") )
-
 # validate layers
 Layers(scCHANTS)
 ```
@@ -163,17 +168,25 @@ scCHANTS <- HTODemux(scCHANTS, assay = "HTO", positive.quantile = 0.99, kfunc = 
 
 Visualise demultiplexing
 ```{r}
+DefaultAssay(scCHANTS) <- "HTO"
+
 # look at classification
 table(scCHANTS$HTO_classification.global)
 
 # visualise enrichment for some HTOs, group cells based on the max HTO signal
-RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2, group.by = "HTO_maxID")
+d1 <- RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2, group.by = "HTO_maxID")
+d1
+ggsave("HTO_1to4_ridgeplot.png", plot = d1, device = png, height = 25, width = 30, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 
 # look at pairs to see if mutually exclusive
-FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
+d2 <- FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
+d2
+ggsave("HTO_1vs2_featureplot.png", plot = d2, device = png, height = 10, width = 15, unit = "cm", bg = "white", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 
 # compare number UMIs
-VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE, group.by = "HTO_classification.global")
+d3 <- VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE, group.by = "HTO_classification.global")
+d3
+ggsave("HTO_nCount_RNA.png", plot = d3, device = png, height = 10, width = 18, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 ```
 
 ```{r}
@@ -189,28 +202,32 @@ length(Cells(scCHANTS_nonegs[["HTO"]]))
 length(Cells(scCHANTS_nonegs[["ADT"]]))
 ## e.g. if counts.Gene Expression and counts.Antibody Capture are removed then RNA layer is no longer subsetted
 
-# step to ensure subsetting
-scCHANTS_nonegs <- subset(scCHANTS, HTO_classification.global != "Negative", assay = "RNA")
-
-
 # calculate a tSNE embedding of the HTO data
 DefaultAssay(scCHANTS_nonegs) <- "HTO"
 
-scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs),
-    verbose = TRUE)
+scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), verbose = TRUE)
 
 scCHANTS_nonegs <- RunPCA(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), approx = FALSE)
 
 scCHANTS_nonegs <- RunUMAP(scCHANTS_nonegs, dims = 1:8, perplexity = 100)
 
-DimPlot(scCHANTS_nonegs)
-DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
+table(Idents(scCHANTS_nonegs))
+
+d4 <- DimPlot(scCHANTS_nonegs, group.by = "hash.ID")
+d4
+ggsave("HTO_hashID_umap.png", plot = d4, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
+
+d5 <- DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
+d5
+ggsave("HTO_classification_umap.png", plot = d5, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 
 
 ```
 Create a heatmap of HTO signals
 ```{r}
-HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
+d6 <- HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
+d6
+ggsave("HTO_signal_heatmap.png", plot = d6, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 ```
 
 Visualise RNA clustering
@@ -220,12 +237,12 @@ This is just mock to check for batch effects. will do clustering etc later on af
 scCHANTS_singlets <- subset(scCHANTS, HTO_classification.global = "Singlet")
 
 DefaultAssay(scCHANTS_singlets) <- "RNA"
-
+DefaultLayer(scCHANTS_singlets[["RNA"]])
 # select the top 1000 most variable features
-scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layers = "counts")
+scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layer = "counts.Gene Expression")
 
 # normalise and scale RNA data, only scale the variable features here for efficiency
-scCHANTS_singlets <- NormalizeData(scCHANTS_singlets, assay = "RNA", layer = "counts")
+scCHANTS_singlets <- NormalizeData(scCHANTS_singlets, assay = "RNA", layer = "counts.Gene Expression")
 scCHANTS_singlets <- ScaleData(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
 
 # run PCA
@@ -237,11 +254,23 @@ scCHANTS_singlets <- FindClusters(scCHANTS_singlets, resolution = 0.6, verbose =
 scCHANTS_singlets <- RunUMAP(scCHANTS_singlets, reduction = "pca", dims = 1:10)
 
 # project singlet identities on UMAP visualisation
-DimPlot(scCHANTS_singlets, group.by = "HTO_classification")
+d7 <- DimPlot(scCHANTS_singlets, group.by = "HTO_classification.global") +
+  labs(title = "RNA UMAP HTO_classification.global")
+d7
+ggsave("HTO_classification_RNA_UMAP.png", plot = d7, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 
 # show only a subset
 subset1 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-1", "HTO-2", "HTO-3") )
-DimPlot(subset1, group.by = "HTO_classification")
+d8 <- DimPlot(subset1, group.by = "HTO_maxID") +
+  labs(title = "RNA UMAP HTO_maxID on HTO-1:3")
+d8
+ggsave("HTO_1to3_maxID_RNA_UMAP.png", plot = d8, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
+
+d9 <- DimPlot(subset1, group.by = "HTO_classification") +
+  labs(title = "RNA UMAP HTO_classification on HTO-1:3") +
+  theme(legend.text=element_text(size=6))
+d9
+ggsave("HTO_1to3_classification_RNA_UMAP.png", plot = d9, device = png, height = 10, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
 
 subset2 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-7", "HTO-8", "HTO-9") )
 DimPlot(subset2, group.by = "HTO_classification")
@@ -254,13 +283,19 @@ rm(subset1, subset2)
 ```{r}
 # check HTO counts
 HTO_counts <- GetAssayData(scCHANTS, assay = "HTO", layer = "counts")
+HTO_counts <- data.frame(HTO_UMIs = Matrix::colSums(HTO_counts))
 summary(Matrix::colSums(HTO_counts))
 ## shows UMI counts are not too low
 
 ## checked HTOs are labelled as antibody capture in cell ranger
 # check library size
-hist(Matrix::colSums(HTO_counts), breaks = 150, main = "Total HTO UMIs per Cell", xlab = "HTO UMIs")
+d10 <- ggplot(HTO_counts, aes(x = HTO_UMIs)) +
+  geom_histogram(bins = 150, fill = "steelblue", color = "black") +
+  labs(main = "Total HTO UMIs per Cell", xlab = "HTO UMIs") 
+d10
 ## not peaking around 0 which is good
+ggsave("HTO_umis_per_cell_histogram.png", plot = d10, device = png, height = 7, width = 12, unit = "cm", path = paste0(file_path, "/PBMC_plots/demultiplex/") )
+
 
 ```
 
@@ -356,20 +391,23 @@ scCHANTS_pbmc[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_pbmc, pattern = "
 scCHANTS_pbmc[["percent_rb"]] <- PercentageFeatureSet(scCHANTS_pbmc, pattern = "^RP[SL]")
 
 # plot on violin plot
-VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3)
+qc1 <- VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3)
 ## before filtering if mt counts are at 0 check you're in RNA assay as default, check head(rownames(scCHANTS_pbmc)) shows gene names
-
+qc1
+ggsave("QC_violinplots.png", plot = qc1, device = png, height = 18, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 
 # feature scatter
-p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "timepoint") +
+ft <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "timepoint") +
   theme(legend.position="none")
-p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", group.by = "timepoint") + 
+mt <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", group.by = "timepoint") + 
   theme(legend.position="none")
-p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", group.by = "timepoint") +
+rb <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", group.by = "timepoint") +
   theme(legend.position="none")
-p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", group.by = "timepoint") +
+mt_rb <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", group.by = "timepoint") +
   theme(legend.position="none")
-(p1 + p2) / (p3 + p4)
+qc2 <- (ft + mt) / (rb + mt_rb)
+qc2
+ggsave("QC_scatterplots.png", plot = qc2, device = png, height = 18, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 
 ```
 
@@ -439,35 +477,47 @@ table(scCHANTS_pbmc@meta.data$QC)
 pbmc_qc <- table(scCHANTS_pbmc@meta.data$QC) %>%  
   as.data.frame() %>% 
   mutate(percent = Freq / sum(Freq) * 100)
-ggplot(pbmc_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
-  geom_col()
 
+qc3 <- ggplot(pbmc_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+qc3
+ggsave("QC_barplot.png", plot = qc3, device = png, height = 8, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 
 # plot on violin plot
-VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, , group.by = "QC")
+qc4 <- VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, , group.by = "QC")
+qc4
+ggsave("QC_violinplots_postQC.png", plot = qc4, device = png, height = 18, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 
 # feature scatter, coloured by QC overlaid
-p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint", group.by = "QC") +
+ft2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint", group.by = "QC") +
   theme(legend.position="none")
-p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "timepoint", group.by = "QC") + 
+mt2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "timepoint", group.by = "QC") + 
   theme(legend.position="none")
-p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
+rb2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
   theme(legend.position="none")
-p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
+mt_rb2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
   theme(legend.position="none")
-(p1 + p2) / (p3 + p4)
-
+qc5 <- (ft2 + mt2) / (rb2 + mt_rb2)
+qc5
+ggsave("QC_scatterplots_postQC.png", plot = qc5, device = png, height = 18, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 
 # feature scatter, coloured by QC split
-p1 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
-  theme(legend.position="none")
-p2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "QC", group.by = "QC") + 
-  theme(legend.position="none")
-p3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
-  theme(legend.position="none")
-p4 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
-  theme(legend.position="none")
-(p1 + p2) / (p3 + p4)
+ft3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "QC", group.by = "QC") + 
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+rb3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt_rb3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+qc6 <- (ft3 + mt3) / (rb3 + mt_rb3)
+qc6
+ggsave("QC_scatterplots_postQC_split.png", plot = qc6, device = png, height = 18, width = 35, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 ```
 
 Subset QCd PBMCs
@@ -484,19 +534,23 @@ Assumes each cell originally contains same number of RNA molecules
 Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
 ```{r}
 DefaultAssay(scCHANTS_pbmc) <- "RNA"
+DefaultLayer(scCHANTS_pbmc[["RNA"]])
+
+# normalise
 scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, normalization.method = "LogNormalize", scale.factor = 10000)
 
 # find variable features
-scCHANTS_pbmc <- FindVariableFeatures(scCHANTS_pbmc, selection.method = "vst", nfeatures = 2000)
+scCHANTS_pbmc <- FindVariableFeatures(scCHANTS_pbmc, selection.method = "vst", nfeatures = 2000, layer = "counts.Gene Expression")
 
 # identify 10 most highly variable genes
 top10_features <- head(VariableFeatures(scCHANTS_pbmc), 10)
 
 # to plot these 10 most variable genes
-p1 <- VariableFeaturePlot(scCHANTS_pbmc)
-p2 <- VariableFeaturePlot(scCHANTS_pbmc) %>% LabelPoints(points = top10_features, repel = TRUE)
-p1 + p2
-# NAs introduced are all for HTO or ADT rows
+pca1 <- VariableFeaturePlot(scCHANTS_pbmc) %>% LabelPoints(points = top10_features, repel = TRUE) +
+  labs(title = "PBMC Variable features")
+pca1
+## NAs introduced are all for HTO or ADT rows
+ggsave("PCA_variablefeatures_labelled.png", plot = pca1, device = png, bg = "white", height = 14, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
 
 # scale data
 all.genes <- rownames(scCHANTS_pbmc)
@@ -505,22 +559,32 @@ scCHANTS_pbmc <- ScaleData(scCHANTS_pbmc, features = all.genes)
 
 ## Dim red on PBMC
 ```{r}
-# run PCA, variable features already calculated and in the saved Rds file
+# run PCA
 scCHANTS_pbmc <- RunPCA(scCHANTS_pbmc, features = VariableFeatures(object = scCHANTS_pbmc))
 
 # visualise
-VizDimLoadings(scCHANTS_pbmc, dims = 1:2, reduction = "pca")
+pca2 <- VizDimLoadings(scCHANTS_pbmc, dims = 1:2, reduction = "pca")
+pca2
+ggsave("PCA_top_pc1to2_genes.png", plot = pca2, device = png, height = 14, width = 18, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
 
+# to save a heatmap must 'capture it'
+while (dev.cur() > 1) dev.off()
+png(paste0(file_path, "/PBMC_plots/PCA/PCA_pc1_heatmap.png"), width = 7, height = 6, units = "in", res = 300 )
 DimHeatmap(scCHANTS_pbmc, dims = 1, cells = 500, balanced = TRUE)
+dev.off() # closes png device
 
-DimHeatmap(pbmc, dims = 1:15, cells = 500, balanced = TRUE)
+png(paste0(file_path, "/PBMC_plots/PCA/PCA_pc1to15_heatmap.png"), width = 7, height = 16, units = "in", res = 300 )
+DimHeatmap(scCHANTS_pbmc, dims = 1:15, cells = 500, balanced = TRUE)
+dev.off() # closes png device
 
 # determine pc number to use
 # generate elbow plot and save as a variable
-elbow_plot <- ElbowPlot(scCHANTS_pbmc) +
-  labs(title = paste(scCHANTS_pbmc_name, "elbowplot", sep = "_"))
+pca3 <- ElbowPlot(scCHANTS_pbmc) +
+  labs(title = "PBMC elbow plot")
+pca3
+ggsave("PCA_elbowplot.png", plot = pca3, device = png, height = 7, width = 9, unit = "cm", bg = "white", path = paste0(file_path, "/PBMC_plots/PCA/") )
 
-# if not clear then do this calculation
+# if not clear then do this calculation to find where drop in variance explained between two successive PCs no longer significant (is <0.1%)
 pct <- scCHANTS_pbmc[["pca"]]@stdev / sum(scCHANTS_pbmc[["pca"]]@stdev) * 100
 # calculate cumulative percents for each PC
 cumu <- cumsum(pct)
@@ -528,18 +592,50 @@ cumu <- cumsum(pct)
 co1 <- sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1), decreasing = T)[1] + 1
 # last point where difference in % of variation is more than 0.1%.
 co1
-## 
+##
+```
 
-# clustering
-scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:10) 
+Deciding resolution for clustering
+```{r}
+scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:9) 
 
-scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 1.0)
+scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = c(0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0))
+# this creates multiple clustering columns e.g. RNA_snn_res.0.2
 
-scCHANTS_pbmc <- RunUMAP(scCHANTS_pbmc, dims = 1:10)
+pca4 <- clustree(scCHANTS_pbmc, layout = "sugiyama") # sugiyama lauout minimises number of crossing edges, can be easier to read
+pca4
+ggsave("PCA_compare_res_clusteringtree.png", plot = pca4, device = png, height = 20, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
+
+# set resolution as default
+Idents(scCHANTS_pbmc) <- "RNA_snn_res.0.2"
+```
+
+Run umap and visualise
+```{r}
+scCHANTS_pbmc <- RunUMAP(scCHANTS_pbmc, dims = 1:9)
+
+# create an empty list to hold the plots
+umap_plots <- list()
+
+# loop through each resolution
+for (res in c("0.2", "0.4", "0.5", "0.6", "0.7", "0.8", "1")) {
+  res_col <- paste0("RNA_snn_res.", res)
+  Idents(scCHANTS_pbmc) <- res_col
+  
+  p <- DimPlot(scCHANTS_pbmc, reduction = "umap", label = TRUE) +
+       ggtitle(paste("Resolution", res))
+  
+  umap_plots[[as.character(res)]] <- p
+}
+
+#combine plots into a grid layout
+wrap_plots(umap_plots, ncol = 3)
+
 
 # plot umap coloured by cell_type and cell_type_lowerres
 DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "sample_id")
 DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "timepoint")
+
 
 ```
 
