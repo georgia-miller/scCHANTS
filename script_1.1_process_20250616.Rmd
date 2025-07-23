@@ -7,7 +7,8 @@ output:
     keep_md: TRUE
 ---
 
-This script is a test script to work with 20250616_benchmark sample to set up a pipeline:
+This script is a test script to work with 20250616_benchmark sample to set up a pipeline. It will explore the seurat file, plot and save various plots and determine the QC metrics for both PBMC and T cell sorted populations. 
+However, to save the processed seurat object, should run as abatch script, found ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R or ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 
 * unzip files
 * load into a seurat object
@@ -912,6 +913,7 @@ pca7
 ```
 
 # Find markers for clusters
+I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 ```{r}
 # must join layers to do find markers
 scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
@@ -922,14 +924,15 @@ pbmc_markers %>%
     group_by(RNA_snn_res.0.7) %>%
     dplyr::filter(avg_log2FC > 1)
 
-write.csv(dpbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_pbmc_markers.Rds")
+# write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_pbmc_markers.Rds")
 ```
 
 
 
 # save PBMC pre-processed RDS (takes a long time)
+I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 ```{r}
-saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_pbmc_processed.Rds")
+# saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
 
 ```
 
