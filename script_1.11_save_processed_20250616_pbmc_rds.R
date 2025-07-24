@@ -2,6 +2,8 @@
 
 # Load packages
 
+! check correct file is loaded, saved, that quality control metrics and dims have been changed, and PBMC vs T cell
+
 library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
@@ -324,7 +326,7 @@ rm(scCHANTS_data)
     
     # save PBMC pre-processed RDS (takes a long time)
     
-    # saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+    saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
     
     # print("RDS saved :)")
     
