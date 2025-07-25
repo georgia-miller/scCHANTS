@@ -63,6 +63,8 @@ scCHANTS_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_w
 scCHANTS <- CreateSeuratObject(counts = scCHANTS_data, project = "scCHANTS")
 
 Assays(scCHANTS)
+Layers(scCHANTS[["RNA"]])
+
 ```
 
 ## Rename HTO and ADT ids
@@ -73,8 +75,8 @@ HTO_names <- rownames(scCHANTS_data$`Antibody Capture`) [1:14]
 ADT_names <- rownames(scCHANTS_data$`Antibody Capture`) [15:18]
 
 # extract count matrices
-HTO_counts <- scCHANTS_data$`Antibody Capture` [HTO_names, drop=FALSE]
-ADT_counts <- scCHANTS_data$`Antibody Capture` [ADT_names, drop=FALSE]
+HTO_counts <- scCHANTS_data$`Antibody Capture` [HTO_names, , drop=FALSE]
+ADT_counts <- scCHANTS_data$`Antibody Capture` [ADT_names, , drop=FALSE]
 
 # check names and order
 rownames(HTO_counts)
@@ -165,7 +167,7 @@ DefaultAssay(scCHANTS) <- "HTO"
 
 # normalise HTO counts, standard is centered log-ratio (CLR) transformation
 # can normalise across features (margin = 1) or across cells (margin = 2)
-# comment on github form satija lab that recommend normalising across tags if variation between hash performances but since have very low signals, will try across cells
+# comment on github forum satija lab says they recommend normalising across tags if variation between hash performances but since have very low signals, will try across cells
 scCHANTS <- NormalizeData(scCHANTS, assay = "HTO", normalization.method = "CLR", margin = 2)
 
 # using default threshold (quantile of inferred negative distribution for each hashtag), default kfunc is clara (for fast k-medoids clustering on large applications, it is faster and more memory-efficient as it repeatedly samples subsets and clusters those)
@@ -191,51 +193,47 @@ d2 <- FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
 d2
 # ggsave("HTO_1vs2_featureplot.png", plot = d2, device = png, height = 10, width = 15, unit = "cm", bg = "white", path = paste0(file_path, "/demultiplex/") )
 
-HTOHeatmap(scCHANTS, assay = "HTO", classification = "classification")
-
 # compare number UMIs
 d3 <- VlnPlot(scCHANTS, features = "nCount_RNA", pt.size = 0.1, log = TRUE, group.by = "HTO_classification.global")
 d3
 # ggsave("HTO_nCount_RNA.png", plot = d3, device = png, height = 10, width = 18, unit = "cm", path = paste0(file_path, "/demultiplex/") )
 
-# plot counts
-VlnPlot(scCHANTS, features = colnames(seurat_obj[["HTO"]]), assay = "HTO")
-
 ```
-##commented out
+
 ```{r}
-# # first remove negative cells from the object
-# scCHANTS_nonegs <- subset(scCHANTS, subset = HTO_classification.global != "Negative")
-# DefaultAssay(scCHANTS) <- "RNA"
-# 
-# # should check numbers of cells after subsetting as does not always subset every assay
-# length(Cells(scCHANTS))
-# length(Cells(scCHANTS_nonegs))
-# length(Cells(scCHANTS_nonegs[["RNA"]]))
-# length(Cells(scCHANTS_nonegs[["HTO"]]))
-# length(Cells(scCHANTS_nonegs[["ADT"]]))
-# ## e.g. if counts.Gene Expression and counts.Antibody Capture are removed then RNA layer is no longer subsetted
-# 
-# # calculate a tSNE embedding of the HTO data
-# DefaultAssay(scCHANTS_nonegs) <- "HTO"
-# 
-# scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), verbose = TRUE)
-# 
-# scCHANTS_nonegs <- RunPCA(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), approx = FALSE)
-# 
-# scCHANTS_nonegs <- RunUMAP(scCHANTS_nonegs, dims = 1:8, perplexity = 100)
-# 
-# table(Idents(scCHANTS_nonegs))
-# 
-# d4 <- DimPlot(scCHANTS_nonegs, group.by = "hash.ID")
-# d4
+# first remove negative cells from the object
+scCHANTS_nonegs <- subset(scCHANTS, subset = HTO_classification.global != "Negative")
+DefaultAssay(scCHANTS) <- "RNA"
+
+# should check numbers of cells after subsetting as does not always subset every assay
+length(Cells(scCHANTS))
+length(Cells(scCHANTS_nonegs))
+length(Cells(scCHANTS_nonegs[["RNA"]]))
+length(Cells(scCHANTS_nonegs[["HTO"]]))
+length(Cells(scCHANTS_nonegs[["ADT"]]))
+## e.g. if counts.Gene Expression and counts.Antibody Capture are removed then RNA layer is no longer subsetted
+
+# calculate a tSNE embedding of the HTO data
+DefaultAssay(scCHANTS_nonegs) <- "HTO"
+
+scCHANTS_nonegs <- ScaleData(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), verbose = TRUE)
+
+scCHANTS_nonegs <- RunPCA(scCHANTS_nonegs, features = rownames(scCHANTS_nonegs), approx = FALSE)
+
+scCHANTS_nonegs <- RunUMAP(scCHANTS_nonegs, dims = 1:8, perplexity = 100)
+
+table(Idents(scCHANTS_nonegs))
+
+d4 <- DimPlot(scCHANTS_nonegs, group.by = "hash.ID")
+d4
 # ggsave("HTO_hashID_umap.png", plot = d4, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
-# 
-# d5 <- DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
-# d5
+
+d5 <- DimPlot(scCHANTS_nonegs, group.by = "HTO_classification.global")
+d5
 # ggsave("HTO_classification_umap.png", plot = d5, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
 
 ```
+
 Create a heatmap of HTO signals
 ```{r}
 d6 <- HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
@@ -245,49 +243,48 @@ d6
 
 Visualise RNA clustering
 This is just mock to check for batch effects. will do clustering etc later on after QC
-##commented out
 ```{r}
-# # extract the singlets
-# scCHANTS_singlets <- subset(scCHANTS, HTO_classification.global = "Singlet")
-# 
-# DefaultAssay(scCHANTS_singlets) <- "RNA"
-# DefaultLayer(scCHANTS_singlets[["RNA"]])
-# # select the top 1000 most variable features
-# scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layer = "counts.Gene Expression")
-# 
-# # normalise and scale RNA data, only scale the variable features here for efficiency
-# scCHANTS_singlets <- NormalizeData(scCHANTS_singlets, assay = "RNA", layer = "counts.Gene Expression")
-# scCHANTS_singlets <- ScaleData(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
-# 
-# # run PCA
-# scCHANTS_singlets <- RunPCA(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
-# 
-# # select the top 10 PCs for clustering and tSNE based on PCElbowPlot
-# scCHANTS_singlets <- FindNeighbors(scCHANTS_singlets, reduction = "pca", dims = 1:10)
-# scCHANTS_singlets <- FindClusters(scCHANTS_singlets, resolution = 0.6, verbose = FALSE)
-# scCHANTS_singlets <- RunUMAP(scCHANTS_singlets, reduction = "pca", dims = 1:10)
-# 
-# # project singlet identities on UMAP visualisation
-# d7 <- DimPlot(scCHANTS_singlets, group.by = "HTO_classification.global") +
-#   labs(title = "RNA UMAP HTO_classification.global")
-# d7
+# extract the singlets
+scCHANTS_singlets <- subset(scCHANTS, HTO_classification.global = "Singlet")
+
+DefaultAssay(scCHANTS_singlets) <- "RNA"
+DefaultLayer(scCHANTS_singlets[["RNA"]])
+# select the top 1000 most variable features
+scCHANTS_singlets <- FindVariableFeatures(scCHANTS_singlets, assay = "RNA", selection.method = "vst", layer = "counts.Gene Expression")
+
+# normalise and scale RNA data, only scale the variable features here for efficiency
+scCHANTS_singlets <- NormalizeData(scCHANTS_singlets, assay = "RNA", layer = "counts.Gene Expression")
+scCHANTS_singlets <- ScaleData(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
+
+# run PCA
+scCHANTS_singlets <- RunPCA(scCHANTS_singlets, features = VariableFeatures(scCHANTS_singlets))
+
+# select the top 10 PCs for clustering and tSNE based on PCElbowPlot
+scCHANTS_singlets <- FindNeighbors(scCHANTS_singlets, reduction = "pca", dims = 1:10)
+scCHANTS_singlets <- FindClusters(scCHANTS_singlets, resolution = 0.6, verbose = FALSE)
+scCHANTS_singlets <- RunUMAP(scCHANTS_singlets, reduction = "pca", dims = 1:10)
+
+# project singlet identities on UMAP visualisation
+d7 <- DimPlot(scCHANTS_singlets, group.by = "HTO_classification.global") +
+  labs(title = "RNA UMAP HTO_classification.global")
+d7
 # ggsave("HTO_classification_RNA_UMAP.png", plot = d7, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
-# 
-# # show only a subset
-# subset1 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-1", "HTO-2", "HTO-3") )
-# d8 <- DimPlot(subset1, group.by = "HTO_maxID") +
-#   labs(title = "RNA UMAP HTO_maxID on HTO-1:3")
-# d8
+
+# show only a subset
+subset1 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-1", "HTO-2", "HTO-3") )
+d8 <- DimPlot(subset1, group.by = "HTO_maxID") +
+  labs(title = "RNA UMAP HTO_maxID on HTO-1:3")
+d8
 # ggsave("HTO_1to3_maxID_RNA_UMAP.png", plot = d8, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
-# 
-# d9 <- DimPlot(subset1, group.by = "HTO_classification") +
-#   labs(title = "RNA UMAP HTO_classification on HTO-1:3") +
-#   theme(legend.text=element_text(size=6))
-# d9
+
+d9 <- DimPlot(subset1, group.by = "HTO_classification") +
+  labs(title = "RNA UMAP HTO_classification on HTO-1:3") +
+  theme(legend.text=element_text(size=6))
+d9
 # ggsave("HTO_1to3_classification_RNA_UMAP.png", plot = d9, device = png, height = 10, width = 20, unit = "cm", path = paste0(file_path, "/demultiplex/") )
-# 
-# subset2 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-7", "HTO-8", "HTO-9") )
-# DimPlot(subset2, group.by = "HTO_classification")
+
+subset2 <- subset(scCHANTS_singlets, subset = HTO_maxID %in% c("HTO-7", "HTO-8", "HTO-9") )
+DimPlot(subset2, group.by = "HTO_classification")
 
 ```
 
@@ -1384,11 +1381,11 @@ Idents(scCHANTS_t) <- "RNA_snn_res.0.7"
 # plot umap coloured by cell_type and cell_type_lowerres
 pca12 <- DimPlot(scCHANTS_t, reduction = "umap", group.by = "sample_id")
 pca12
-# ggsave("PCA_sample_id_umap.png", plot = pca12, device = png, height = 10, width =13, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
+# ggsave("PCA_sample_id_umap.png", plot = pca12, device = png, height = 10, width =10, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
 
 pca13 <- DimPlot(scCHANTS_t, reduction = "umap", group.by = "timepoint")
 pca13
-# ggsave("PCA_timepoint_umap.png", plot = pca13, device = png, height = 10, width =11, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
+# ggsave("PCA_timepoint_umap.png", plot = pca13, device = png, height = 10, width =13, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
 
 ```
 
