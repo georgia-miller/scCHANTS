@@ -1,0 +1,17 @@
+---
+title: "script_1.21_analyse_20250616_pbmcs"
+author: "GKM"
+date: "2025-07-25"
+output:
+  html_document:
+    keep_md: TRUE
+---
+
+In script 1.11, we loaded, demultimplexed HTOs, filtered for QC, ran PCA, clustering and UMAP.
+The seurat object was then saved so it can be read in here without repeating any of the above steps.
+We also ran find cluster biomarkers which was saved to a csv file that can now be read in
+
+```{r}
+scCHANTS_pbmc <- readRDS("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+```
+
