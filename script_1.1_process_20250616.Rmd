@@ -903,10 +903,10 @@ pca16
 
 ## Remove clustering resolution columns
 ```{r}
-scCHANTS_pbmc@meta.data <- scCHANTS_pbmc@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_pbmc@meta.data))]
+#scCHANTS_pbmc@meta.data <- scCHANTS_pbmc@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_pbmc@meta.data))]
 
 # recluster with determined resolution
-scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 0.6)
+#scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 0.6)
 colnames(scCHANTS_pbmc@meta.data)
 Idents(scCHANTS_pbmc) <- "RNA_snn_res.0.6"
 
@@ -940,7 +940,7 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
 pbmc_markers %>%
-    group_by(RNA_snn_res.0.7) %>%
+    group_by(RNA_snn_res.0.6) %>%
     dplyr::filter(avg_log2FC > 1)
 
 # write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_pbmc_markers.Rds")
@@ -1367,11 +1367,11 @@ pca11
 
 ## Remove clustering resolution columns
 ```{r}
-scCHANTS_t@meta.data <- scCHANTS_t@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_t@meta.data))]
+#scCHANTS_t@meta.data <- scCHANTS_t@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_t@meta.data))]
 
 # recluster with determined resolution
-scCHANTS_t <- FindClusters(scCHANTS_t, resolution = 0.7)
-colnames(scCHANTS_t@meta.data)
+#scCHANTS_t <- FindClusters(scCHANTS_t, resolution = 0.7)
+#colnames(scCHANTS_t@meta.data)
 Idents(scCHANTS_t) <- "RNA_snn_res.0.7"
 
 ```
