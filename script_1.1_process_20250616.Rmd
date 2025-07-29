@@ -176,7 +176,7 @@ scCHANTS <- HTODemux(scCHANTS, assay = "HTO", positive.quantile = 0.99, kfunc = 
 ```
 
 ## Visualise demultiplexing
-```{r}
+```{r fig.dim = c(9,9)}
 DefaultAssay(scCHANTS) <- "HTO"
 
 # look at classification
@@ -187,7 +187,10 @@ table(scCHANTS$HTO_classification.global)
 d1 <- RidgePlot(scCHANTS, assay = "HTO", features = rownames(scCHANTS[["HTO"]])[1:4], ncol = 2, group.by = "HTO_maxID")
 d1
 # ggsave("HTO_1to4_ridgeplot.png", plot = d1, device = png, height = 25, width = 30, unit = "cm", path = paste0(file_path, "/demultiplex/") )
+```
 
+
+```{r}
 # look at pairs to see if mutually exclusive
 d2 <- FeatureScatter(scCHANTS, feature1 = "HTO-1", feature2 = "HTO-2")
 d2
@@ -235,7 +238,7 @@ d5
 ```
 
 Create a heatmap of HTO signals
-```{r}
+```{r fig.dim = c(8,8)}
 d6 <- HTOHeatmap(scCHANTS, assay = "HTO", ncells = 5000)
 d6
 # ggsave("HTO_signal_heatmap.png", plot = d6, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
@@ -276,7 +279,10 @@ d8 <- DimPlot(subset1, group.by = "HTO_maxID") +
   labs(title = "RNA UMAP HTO_maxID on HTO-1:3")
 d8
 # ggsave("HTO_1to3_maxID_RNA_UMAP.png", plot = d8, device = png, height = 10, width = 15, unit = "cm", path = paste0(file_path, "/demultiplex/") )
+```
 
+
+```{r fig.dim = c(11, 5)}
 d9 <- DimPlot(subset1, group.by = "HTO_classification") +
   labs(title = "RNA UMAP HTO_classification on HTO-1:3") +
   theme(legend.text=element_text(size=6))
@@ -301,7 +307,8 @@ summary(Matrix::colSums(HTO_counts))
 # check library size
 d10 <- ggplot(HTO_counts, aes(x = HTO_UMIs)) +
   geom_histogram(bins = 150, fill = "steelblue", color = "black") +
-  labs(main = "Total HTO UMIs per Cell", xlab = "HTO UMIs") 
+  labs(main = "Total HTO UMIs per Cell", xlab = "HTO UMIs") +
+  theme_minimal()
 d10
 ## not peaking around 0 which is good
 # ggsave("HTO_umis_per_cell_histogram.png", plot = d10, device = png, height = 7, width = 12, unit = "cm", path = paste0(file_path, "/demultiplex/") )
@@ -403,7 +410,7 @@ length(Cells(scCHANTS_t@assays$ADT))
 # PBMC pre-processing
 
 ## Quality control on PBMCs
-```{r}
+```{r fig.dim = c(7,8)}
 # calculate mt contamination and add column to metadata
 scCHANTS_pbmc[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_pbmc, pattern = "^MT-")
 
@@ -415,7 +422,10 @@ qc1 <- VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percen
 ## before filtering if mt counts are at 0 check you're in RNA assay as default, check head(rownames(scCHANTS_pbmc)) shows gene names
 qc1
 # ggsave("QC_violinplots.png", plot = qc1, device = png, height = 20, width = 20, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
+```
 
+
+```{r}
 # can look in more detail if needed e.g.
 VlnPlot(scCHANTS_pbmc, features = "nFeature_RNA", group.by = "timepoint") +
   coord_cartesian(ylim = c(0, 200)) +
@@ -505,10 +515,14 @@ pbmc_qc <- table(scCHANTS_pbmc@meta.data$QC) %>%
 
 qc3 <- ggplot(pbmc_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
   geom_col() +
-  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) +
+  theme_minimal()
 qc3
 # ggsave("QC_barplot.png", plot = qc3, device = png, height = 8, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
+```
 
+
+```{r fig.dim = c(7,10)}
 # plot on violin plot
 qc4 <- VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, group.by = "QC")
 qc4
@@ -526,7 +540,10 @@ mt_rb2 <- FeatureScatter(scCHANTS_pbmc, feature1 = "percent_mt", feature2 = "per
 qc5 <- (ft2 + mt2) / (rb2 + mt_rb2)
 qc5
 # ggsave("QC_scatterplots_postQC.png", plot = qc5, device = png, height = 22, width = 25, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
+```
 
+
+```{r fig.dim = c(10,10)}
 # feature scatter, coloured by QC split
 ft3 <- FeatureScatter(scCHANTS_pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
   theme(legend.position="none") +
@@ -563,7 +580,7 @@ rm(ft, ft2, ft3, mt, mt2, mt3, mt_rb, mt_rb2, mt_rb3, pbmc_qc, qc1, qc2, qc3, qc
 Default is lognormalise, a global-scaling normalisation method normalises feature expression measurements for each cell by total expression, x by 10,000 by default and log-transforms the result. It stores these in [["RNA"]]$data
 Assumes each cell originally contains same number of RNA molecules
 Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
-```{r}
+```{r fig.dim = c(10,7)}
 DefaultAssay(scCHANTS_pbmc) <- "RNA"
 DefaultLayer(scCHANTS_pbmc[["RNA"]])
 
@@ -592,7 +609,7 @@ scCHANTS_pbmc <- ScaleData(scCHANTS_pbmc, features = all.genes)
 ```
 
 ## Dim red on PBMC
-```{r}
+```{r fig.dim = c(10,7)}
 # run PCA
 scCHANTS_pbmc <- RunPCA(scCHANTS_pbmc, features = VariableFeatures(object = scCHANTS_pbmc))
 
@@ -600,17 +617,26 @@ scCHANTS_pbmc <- RunPCA(scCHANTS_pbmc, features = VariableFeatures(object = scCH
 pca2 <- VizDimLoadings(scCHANTS_pbmc, dims = 1:2, reduction = "pca")
 pca2
 # ggsave("PCA_top_pc1to2_genes.png", plot = pca2, device = png, height = 14, width = 18, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
+```
 
+
+```{r}
 # to save a heatmap must 'capture it' with png
 # while (dev.cur() > 1) dev.off()
 # png(paste0(file_path, "/PBMC_plots/PCA/PCA_pc1_heatmap.png"), width = 7, height = 6, units = "in", res = 300 )
 DimHeatmap(scCHANTS_pbmc, dims = 1, cells = 500, balanced = TRUE)
 #dev.off() # closes png device
+```
 
+
+```{r fig.dim = c(7,12)}
 # png(paste0(file_path, "/PBMC_plots/PCA/PCA_pc1to15_heatmap.png"), width = 7, height = 16, units = "in", res = 300 )
 DimHeatmap(scCHANTS_pbmc, dims = 1:15, cells = 500, balanced = TRUE)
 #dev.off() # closes png device
+```
 
+
+```{r}
 # determine pc number to use
 # generate elbow plot and save as a variable
 pca3 <- ElbowPlot(scCHANTS_pbmc) +
@@ -630,7 +656,7 @@ sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1), decreasing = T)
 ```
 
 ## Deciding resolution for clustering
-```{r}
+```{r fig.dim = c(8,8)}
 scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:11) 
 
 scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = c(0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 1))
@@ -647,12 +673,14 @@ Idents(scCHANTS_pbmc) <- "RNA_snn_res.0.6"
 ```
 
 Plot clustree based on gene exp etc
-```{r}
+```{r fig.dim = c(12,15)}
 # use median to see typical expression per cluster, avoid misleading high expressing cells
 # mean if interested in total contribution of a gene and know expression isn't skewed
 # however, all nodes are same colour across clusters if use median, use mean initially
 
-markers <- c("CD3D", "CD3E", "CD8A", "CD8B", "NKG7", "CD14", "CD79A", "CD1C", "PF4")
+markers <- c("CD3D", "CD3E", "CD8A", 
+             "CD8B", "NKG7", "CD14", 
+             "CD79A", "CD1C", "PF4")
 
 gene_trees <- lapply(markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -685,7 +713,10 @@ gene_trees2 <- lapply(markers, function(gene) {
 pca6 <- wrap_plots(gene_trees2, ncol = 3)
 pca6
 # ggsave("PCA_median_gene_exp_clusteringtree.png", plot = pca6, device = png, height = 40, width = 45, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
+
+```{r fig.dim = c(8,8)}
 # extract and save legend for plasma colour scale
 with_legend <- clustree(scCHANTS_pbmc,
                        prefix = "RNA_snn_res.", 
@@ -701,10 +732,12 @@ with_legend
 ```
 
 Specific cell type marker genes - using Oelen et al marker genes
-```{r}
+```{r fig.dim = c(12,15)}
 # CD4 T cells
 # all high bar last two, CCR7 and SELL in naive, LTB, IL7R AND S100A4 in memory
-CD4_markers <- c("CD3D", "CD3E", "CD3G", "CCR7", "SELL", "LTB", "IL7R", "CD8A", "CD8B")
+CD4_markers <- c("CD3D", "CD3E", "CD3G", 
+                 "CCR7", "SELL", "LTB", 
+                 "IL7R", "CD8A", "CD8B")
 
 CD4_trees <- lapply(CD4_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -721,11 +754,16 @@ CD4_trees <- lapply(CD4_markers, function(gene) {
 pca7 <- wrap_plots(CD4_trees, ncol = 3)
 pca7
 # ggsave("PCA_mean_CD4_gene_exp_clusteringtree.png", plot = pca7, device = png, height = 40, width = 45, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,20)}
 # CD8 T cells
 # all high, CCR7 and SELL in naive, LTB, IL7R AND S100A4 in memory
-CD8_markers <- c("CD8A", "CD8B", "CD3D", "CD3E", "CD3G", "GZMB", "PRF1", "CCR7", "SELL", "LTB", "IL7R", "S100A4")
+CD8_markers <- c("CD8A", "CD8B", "CD3D", 
+                 "CD3E", "CD3G", "GZMB", 
+                 "PRF1", "CCR7", "SELL", 
+                 "LTB", "IL7R", "S100A4")
 
 CD8_trees <- lapply(CD8_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -742,11 +780,15 @@ CD8_trees <- lapply(CD8_markers, function(gene) {
 pca8 <- wrap_plots(CD8_trees, ncol = 3)
 pca8
 # ggsave("PCA_mean_CD8_gene_exp_clusteringtree.png", plot = pca8, device = png, height = 55, width = 45, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,15)}
 # Monocytes
 # CD14 high, LYZ, S100A9 and CSF3R high in classical, low in non-classical, FCGR3A, LYN, CSF1R and IFITM1-3 high in non-classical, low in classical
-mono_markers <- c("CD14", "LYZ", "S100A9", "CSF3R", "FCGR3A", "LYN", "CSF1R", "IFITM1", "IFITM2")
+mono_markers <- c("CD14", "LYZ", "S100A9", 
+                  "CSF3R", "FCGR3A", "LYN", 
+                  "CSF1R", "IFITM1", "IFITM2")
 
 mono_trees <- lapply(mono_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -763,11 +805,15 @@ mono_trees <- lapply(mono_markers, function(gene) {
 pca9 <- wrap_plots(mono_trees, ncol = 3)
 pca9
 # ggsave("PCA_mean_mono_gene_exp_clusteringtree.png", plot = pca9, device = png, height = 40, width = 45, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,15)}
 # NK
 # NKG7 nad GNLY high in dim and bright, CD8A/B low, FCGR3A, GZMB and PRF1 high in dim but low in bright, KLRC1 high in bright
-NK_markers <- c("NKG7", "GNLY", "FCGR3A", "GZMB", "PRF1", "KLRC1", "CD8A", "CD8B")
+NK_markers <- c("NKG7", "GNLY", "FCGR3A", 
+                "GZMB", "PRF1", "KLRC1", 
+                "CD8A", "CD8B")
 
 NK_trees <- lapply(NK_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -784,8 +830,10 @@ NK_trees <- lapply(NK_markers, function(gene) {
 pca10 <- wrap_plots(NK_trees, ncol = 3)
 pca10
 # ggsave("PCA_mean_NK_gene_exp_clusteringtree.png", plot = pca10, device = png, height = 40, width = 45, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(8,8)}
 # B
 # all high, no MS4A1 in plasma
 B_markers <- c("CD79A", "MS4A1")
@@ -805,11 +853,14 @@ B_trees <- lapply(B_markers, function(gene) {
 pca11 <- wrap_plots(B_trees, ncol = 2)
 pca11
 # ggsave("PCA_mean_B_gene_exp_clusteringtree.png", plot = pca11, device = png, height = 14, width = 30, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,10)}
 # DC
 # CD1C and ITGAX high in myeloid, CLEC4C low, CLEC4C high in plasmacytoid, CD1C, ITGAX low, CD14 low in both
-DC_markers <- c("CD1C", "ITGAX", "CLEC4C", "CD14")
+DC_markers <- c("CD1C", "ITGAX", 
+                "CLEC4C", "CD14")
 
 DC_trees <- lapply(DC_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -826,11 +877,14 @@ DC_trees <- lapply(DC_markers, function(gene) {
 pca12 <- wrap_plots(DC_trees, ncol = 2)
 pca12
 # ggsave("PCA_mean_DC_gene_exp_clusteringtree.png", plot = pca12, device = png, height = 30, width = 30, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,10)}
 # megakaryotcytes
 # all high
-megak_markers <- c("GP9", "ITGA2B", "PF4", "PPBP")
+megak_markers <- c("GP9", "ITGA2B", 
+                   "PF4", "PPBP")
 
 megak_trees <- lapply(megak_markers, function(gene) {
   clustree(scCHANTS_pbmc,
@@ -852,7 +906,7 @@ pca13
 ```
 
 ## Run umap and visualise
-```{r}
+```{r fig.dim = c(9,15)}
 scCHANTS_pbmc <- RunUMAP(scCHANTS_pbmc, dims = 1:11)
 
 # create an empty list to hold the plots
@@ -873,13 +927,18 @@ for (res in c("0.2", "0.4", "0.5", "0.6", "0.7", "0.8", "1")) {
 pca14 <- wrap_plots(umap_plots, ncol = 3)
 pca14
 # ggsave("PCA_compare_res_umaps.png", plot = pca14, device = png, height = 25, width =30, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
+```
 
 
+```{r fig.dim = c(12,10)}
 # plot RNA counts, mt and rb contamination
 pca15 <- VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, group.by = "RNA_snn_res.0.7")
 pca15
 # ggsave("PCA_compare_clusters_violinplots.png", plot = pca15, device = png, height = 22, width = 25, unit = "cm", path = paste0(file_path, "/PBMC_plots/PCA/") )
+```
 
+
+```{r}
 # plot cluster sizes, must extract first
 cluster_counts <- table(Idents(scCHANTS_pbmc)) %>% 
   as.data.frame() %>% 
@@ -931,6 +990,16 @@ Remove PCA plots
 rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca11, pca12, pca13, pca14, pca15, pca16, pca17, pca18)
 ```
 
+
+
+# save PBMC pre-processed RDS (takes a long time)
+Save before joining layers to find markers
+I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
+```{r}
+# saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+
+```
+
 # Find markers for clusters
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 ```{r}
@@ -939,27 +1008,18 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
+
 pbmc_markers %>%
-    group_by(RNA_snn_res.0.6) %>%
+    group_by(cluster) %>%
     dplyr::filter(avg_log2FC > 1)
 
-# write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_pbmc_markers.Rds")
+# write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
 ```
-
-
-
-# save PBMC pre-processed RDS (takes a long time)
-I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
-```{r}
-# saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
-
-```
-
 
 # T cell pre-processing
 ## Quality control on T cells
 
-```{r}
+```{r fig.dim = c(7,8)}
 # calculate mt contamination and add column to metadata
 scCHANTS_t[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_t, pattern = "^MT-")
 
@@ -971,7 +1031,10 @@ qc1 <- VlnPlot(scCHANTS_t, features = c("nFeature_RNA", "nCount_RNA", "percent_m
 ## before filtering if mt counts are at 0 check you're in RNA assay as default, check head(rownames(scCHANTS_t)) shows gene names
 qc1
 # ggsave("QC_violinplots.png", plot = qc1, device = png, height = 20, width = 20, unit = "cm", path = paste0(file_path, "/T_plots/QC/") )
+```
 
+
+```{r}
 # can look in more detail if needed e.g.
 VlnPlot(scCHANTS_t, features = "nFeature_RNA", group.by = "timepoint") +
   coord_cartesian(ylim = c(75, 200)) +
@@ -1065,10 +1128,14 @@ t_qc <- table(scCHANTS_t@meta.data$QC) %>%
 
 qc3 <- ggplot(t_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
   geom_col() +
-  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) +
+  theme_minimal()
 qc3
 # ggsave("QC_barplot.png", plot = qc3, device = png, height = 8, width = 15, unit = "cm", path = paste0(file_path, "/T_plots/QC/") )
+```
 
+
+```{r fig.dim = c(7,10)}
 # plot on violin plot
 qc4 <- VlnPlot(scCHANTS_t, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, group.by = "QC")
 qc4
@@ -1086,7 +1153,10 @@ mt_rb2 <- FeatureScatter(scCHANTS_t, feature1 = "percent_mt", feature2 = "percen
 qc5 <- (ft2 + mt2) / (rb2 + mt_rb2)
 qc5
 # ggsave("QC_scatterplots_postQC.png", plot = qc5, device = png, height = 22, width = 25, unit = "cm", path = paste0(file_path, "/T_plots/QC/") )
+```
 
+
+```{r fig.dim = c(10,10)}
 # feature scatter, coloured by QC split
 ft3 <- FeatureScatter(scCHANTS_t, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
   theme(legend.position="none") +
@@ -1123,7 +1193,7 @@ rm(ft, ft2, ft3, mt, mt2, mt3, mt_rb, mt_rb2, mt_rb3, t_qc, qc1, qc2, qc3, qc4, 
 Default is lognormalise, a global-scaling normalisation method normalises feature expression measurements for each cell by total expression, x by 10,000 by default and log-transforms the result. It stores these in [["RNA"]]$data
 Assumes each cell originally contains same number of RNA molecules
 Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
-```{r}
+```{r fig.dim = c(10,7)}
 DefaultAssay(scCHANTS_t) <- "RNA"
 DefaultLayer(scCHANTS_t[["RNA"]])
 
@@ -1152,7 +1222,7 @@ scCHANTS_t <- ScaleData(scCHANTS_t, features = all.genes)
 ```
 
 ## Dim red on T cells
-```{r}
+```{r fig.dim = c(10,7)}
 # run PCA
 scCHANTS_t <- RunPCA(scCHANTS_t, features = VariableFeatures(object = scCHANTS_t))
 
@@ -1160,17 +1230,26 @@ scCHANTS_t <- RunPCA(scCHANTS_t, features = VariableFeatures(object = scCHANTS_t
 pca2 <- VizDimLoadings(scCHANTS_t, dims = 1:2, reduction = "pca")
 pca2
 # ggsave("PCA_top_pc1to2_genes.png", plot = pca2, device = png, height = 14, width = 18, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
+```
 
+
+```{r}
 # to save a heatmap must 'capture it' with png
 # while (dev.cur() > 1) dev.off()
 # png(paste0(file_path, "/T_plots/PCA/PCA_pc1_heatmap.png"), width = 7, height = 6, units = "in", res = 300 )
 DimHeatmap(scCHANTS_t, dims = 1, cells = 500, balanced = TRUE)
 # dev.off() # closes png device
+```
 
+
+```{r fig.dim = c(7,12)}
 # png(paste0(file_path, "/T_plots/PCA/PCA_pc1to15_heatmap.png"), width = 7, height = 16, units = "in", res = 300 )
 DimHeatmap(scCHANTS_t, dims = 1:15, cells = 500, balanced = TRUE)
 # dev.off() # closes png device
+```
 
+
+```{r}
 # determine pc number to use
 # generate elbow plot and save as a variable
 pca3 <- ElbowPlot(scCHANTS_t) +
@@ -1190,7 +1269,7 @@ sort(which((pct[1:length(pct) - 1] - pct[2:length(pct)]) > 0.1), decreasing = T)
 ```
 
 ## Deciding resolution for clustering
-```{r}
+```{r fig.dim = c(8,8)}
 scCHANTS_t <- FindNeighbors(scCHANTS_t, dims = 1:9) 
 
 scCHANTS_t <- FindClusters(scCHANTS_t, resolution = c(0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 1))
@@ -1207,12 +1286,13 @@ Idents(scCHANTS_t) <- "RNA_snn_res.0.7"
 ```
 
 Plot clustree based on gene exp etc
-```{r}
+```{r fig.dim = c(8,25)}
 # use median to see typical expression per cluster, avoid misleading high expressing cells
 # mean if interested in total contribution of a gene and know expression isn't skewed
 # however, all nodes are same colour across clusters if use median, use mean initially
 
-markers <- c("CD3D", "CD3E", "CD3G", "TRAC", # both CD4 and CD8 T cells
+markers <- c("CD3D", "CD3E", 
+             "CD3G", "TRAC", # both CD4 and CD8 T cells
              "CD8A", "CD8B", # CD8 T cells only
              "CCR7", "SELL", # naive CD4/8 
              "LTB", "IL7R") # memory CD4/8
@@ -1248,7 +1328,10 @@ gene_trees2 <- lapply(markers, function(gene) {
 pca6 <- wrap_plots(gene_trees2, ncol = 2)
 pca6
 # ggsave("PCA_median_gene_exp_clusteringtree.png", plot = pca6, device = png, height = 70, width = 45, unit = "cm", path = paste0(file_path, "/T_plots/PCA/clustree") )
+```
 
+
+```{r fig.dim = c(8,8)}
 # extract and save legend for plasma colour scale
 with_legend <- clustree(scCHANTS_t,
                         prefix = "RNA_snn_res.", 
@@ -1264,8 +1347,7 @@ with_legend
 ```
 
 Specific cell type marker genes - using Oelen et al marker genes
-```{r}
-
+```{r fig.dim = c(12,30)}
 # 3 for each of Th1, Th2, Th9, Th17, Th22, Tfh in that order. Tried to pick a surface, intracellular and secreted protein for each
 CD4_Th_markers <- c("STAT1", "CCR1", "IFNGR1", # Th1
                     "GATA3", "IL4", "CCR3", # Th2
@@ -1289,8 +1371,10 @@ CD4_Th_trees <- lapply(CD4_Th_markers, function(gene) {
 pca7 <- wrap_plots(CD4_Th_trees, ncol = 3)
 pca7
 # ggsave("PCA_mean_CD4_Th_gene_exp_clusteringtree.png", plot = pca7, device = png, height = 80, width = 45, unit = "cm", path = paste0(file_path, "/T_plots/PCA/clustree") )
+```
 
 
+```{r fig.dim = c(12,15)}
 # 3 for each of T regs, DCs, and other T cells in that order. Tried to pick a surface, intracellular and secreted protein for each
 CD4_other_markers <- c("FOXP3", "TGFB1", "CTLA4", # Tregs
                        "CD40", "CD83", "CX3CR1", # DCs
@@ -1316,7 +1400,7 @@ pca8
 ```
 
 ## Run umap and visualise
-```{r}
+```{r fig.dim = c(9,15)}
 scCHANTS_t <- RunUMAP(scCHANTS_t, dims = 1:10)
 
 # create an empty list to hold the plots
@@ -1337,13 +1421,18 @@ for (res in c("0.2", "0.4", "0.5", "0.6", "0.7", "0.8", "1")) {
 pca9 <- wrap_plots(umap_plots, ncol = 3)
 pca9
 # ggsave("PCA_compare_res_umaps.png", plot = pca9, device = png, height = 25, width =30, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
+```
 
 
+```{r fig.dim = c(12,10)}
 # plot RNA counts, mt and rb contamination
 pca10 <- VlnPlot(scCHANTS_t, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, group.by = "RNA_snn_res.0.7")
 pca10
 # ggsave("PCA_compare_clusters_violinplots.png", plot = pca10, device = png, height = 22, width = 25, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
+```
 
+
+```{r fig.dim = c(12,10)}
 # plot cluster sizes, must extract first
 cluster_counts <- table(Idents(scCHANTS_t)) %>% 
   as.data.frame() %>% 
@@ -1351,7 +1440,10 @@ cluster_counts <- table(Idents(scCHANTS_t)) %>%
 colnames(cluster_counts) <- c("cluster", "cell_count")
 
 head(cluster_counts)
+```
 
+
+```{r}
 pca11 <- ggplot(cluster_counts, aes(x = cluster, y = cell_count, fill = cluster)) +
   geom_bar(stat = "identity") +
   theme_minimal() +
@@ -1393,6 +1485,15 @@ Remove PCA plots
 rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca11, pca12, pca13)
 ```
 
+
+# save T pre-processed RDS (takes a long time)
+Save before joining layers to find markers
+I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
+```{r}
+# saveRDS(object=scCHANTS_t, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
+
+```
+
 # Find markers for clusters
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
 ```{r}
@@ -1402,17 +1503,8 @@ scCHANTS_t <- JoinLayers(scCHANTS_t)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
 t_markers %>%
-  group_by(RNA_snn_res.0.7) %>%
+  group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1)
 
-# write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_t_markers.Rds")
-```
-
-
-
-# save T pre-processed RDS (takes a long time)
-I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
-```{r}
-# saveRDS(object=scCHANTS_t, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
-
+# write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
 ```

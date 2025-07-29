@@ -3,7 +3,6 @@
 # Load packages
 
 #! check correct file is loaded, saved, that quality control and dims metrics have been changed, and PBMC vs T cell
-
 library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
@@ -13,12 +12,10 @@ library("patchwork")
 
 
 # Create file path for saving plots
-
 file_path <- "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/plots"
 
 
 # Load data
-
 # load the unzipped files
 # gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
 scCHANTS_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
@@ -26,12 +23,10 @@ scCHANTS_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_w
 # create seurat object
 # could add arguments for min.cells or min.features to be included
 scCHANTS <- CreateSeuratObject(counts = scCHANTS_data, project = "scCHANTS")
-
 Assays(scCHANTS)
 
 
 ## Rename HTO and ADT ids
-
 # add HTO and ADT assay to the seurat object as it is by default ignored by CreateSeuratObject
 # extract feature names
 HTO_names <- rownames(scCHANTS_data$`Antibody Capture`) [1:14]
@@ -79,7 +74,6 @@ rownames(ADT_counts)
 
 
 ## Add HTO and ADT assays to seurat object
-
 # add HTO assay
 scCHANTS[["HTO"]] <- CreateAssayObject(counts = HTO_counts)
 
@@ -91,9 +85,6 @@ Assays(scCHANTS)
 
 # validate layers
 Layers(scCHANTS)
-
-
-
 
 # check default assay
 DefaultAssay(scCHANTS)
@@ -110,9 +101,7 @@ scCHANTS@assays$ADT
 rm(scCHANTS_data)
 
 
-
-# Demulitplex HTOs
-
+# Demultiplex HTOs
 DefaultAssay(scCHANTS) <- "HTO"
 
 # normalise HTO counts, standard is centered log-ratio (CLR) transformation
@@ -137,13 +126,11 @@ length(Cells(scCHANTS[["ADT"]]))
 
 
 ### Remove demultiplexing plots to save memory
-
 # remove objects
 rm(ADT_counts, HTO_counts, ADT_names, HTO_names, hto_info, name_to_id)
 
 
 # Add metadata
-
 # examine existing metadata
 metadata <- scCHANTS@meta.data
 
@@ -177,7 +164,6 @@ metadata[14:17, 14:17]
 
 
 # Separate PBMC and sorted T cell samples
-
 print("Full scCHANTS")
 DefaultAssay(scCHANTS) <- "RNA"
 length(Cells(scCHANTS@assays$RNA))
@@ -200,7 +186,6 @@ length(Cells(scCHANTS_t@assays$ADT))
 # T cell pre-processing
 
 ## Quality control on T cells
-
 # calculate mt contamination and add column to metadata
 scCHANTS_t[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_t, pattern = "^MT-")
 
@@ -273,7 +258,6 @@ length(Cells(scCHANTS_t@assays$ADT))
 
 
 ## Normalisation of T cells
-
 DefaultAssay(scCHANTS_t) <- "RNA"
 DefaultLayer(scCHANTS_t[["RNA"]])
 
@@ -286,15 +270,10 @@ scCHANTS_t <- FindVariableFeatures(scCHANTS_t, selection.method = "vst", nfeatur
 # identify 10 most highly variable genes
 top10_features <- head(VariableFeatures(scCHANTS_t), 10)
 
-# to plot these 10 most variable genes
-pca1 <- VariableFeaturePlot(scCHANTS_t) %>% LabelPoints(points = top10_features, repel = TRUE) +
-  labs(title = "T cell Variable features")
-#pca1
 ## NAs introduced are all for HTO or ADT rows
 hvf_info <- HVFInfo(scCHANTS_t)
 summary(is.na(hvf_info))
 hvf_info[!complete.cases(hvf_info), ]
-# ggsave("PCA_variablefeatures_labelled.png", plot = pca1, device = png, bg = "white", height = 14, width = 20, unit = "cm", path = paste0(file_path, "/T_plots/PCA/") )
 
 # scale data
 all.genes <- rownames(scCHANTS_t)
@@ -302,13 +281,11 @@ scCHANTS_t <- ScaleData(scCHANTS_t, features = all.genes)
 
 
 ## Dim red on T cell
-
 # run PCA
 scCHANTS_t <- RunPCA(scCHANTS_t, features = VariableFeatures(object = scCHANTS_t))
 
 
 ## Deciding resolution for clustering
-
 scCHANTS_t <- FindNeighbors(scCHANTS_t, dims = 1:10) 
 
 scCHANTS_t <- FindClusters(scCHANTS_t, resolution = 0.7)
@@ -319,30 +296,29 @@ colnames(scCHANTS_t@meta.data)
 # set resolution as default
 Idents(scCHANTS_t) <- "RNA_snn_res.0.6"
 
-## Run umap and visualise
 
+## Run umap and visualise
 scCHANTS_t <- RunUMAP(scCHANTS_t, dims = 1:10)
 
 
-# save T cell pre-processed RDS (takes a long time)
-
+# save T cell pre-processed RDS (takes a long time), save before joining layers to find markers
 saveRDS(object=scCHANTS_t, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
 
 print("RDS saved :)")
 
 
 # Find markers for clusters
-
 # must join layers to do find markers
 scCHANTS_t <- JoinLayers(scCHANTS_t)
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
+
 t_markers %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1)
 
-write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/scCHANTS_t_markers.Rds")
+write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.csv")
 
 print("CSV saved :)")
 

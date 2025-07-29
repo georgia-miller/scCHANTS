@@ -13,5 +13,24 @@ We also ran find cluster biomarkers which was saved to a csv file that can now b
 
 ```{r}
 scCHANTS_pbmc <- readRDS("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+
+pbmc_markers <- read_csv("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.csv")
+
+
+```
+
+# Biomarkers
+## Ways to visualise biomarkers
+Classification power
+ROC test rteurns value 0-1 (random-perfect classification)
+```{r}
+cluster0.markers <- FindMarkers(scCHANTS_pbmc, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+
+VlnPlot(pbmc, features = c("MS4A1", "CD79A"))
+
+VlnPlot(pbmc, features = c("NKG7", "PF4"), slot = "counts", log = TRUE)
+
+FeaturePlot(pbmc, features = c("MS4A1", "GNLY", "CD3E", "CD14", "FCER1A", "FCGR3A", "LYZ", "PPBP",
+    "CD8A"))
 ```
 
