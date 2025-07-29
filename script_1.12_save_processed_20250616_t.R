@@ -1,4 +1,4 @@
-# ~/R/scCHANTS/script_1.12_save_processed_20250616_t_rds.R
+# ~/R/scCHANTS/script_1.12_save_processed_20250616_t.R
 
 # Load packages
 
@@ -294,7 +294,7 @@ print("Metadata columns are:")
 colnames(scCHANTS_t@meta.data)
 
 # set resolution as default
-Idents(scCHANTS_t) <- "RNA_snn_res.0.6"
+Idents(scCHANTS_t) <- "RNA_snn_res.0.7"
 
 
 ## Run umap and visualise
@@ -314,13 +314,12 @@ scCHANTS_t <- JoinLayers(scCHANTS_t)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
 
-t_markers %>%
-  group_by(cluster) %>%
-  dplyr::filter(avg_log2FC > 1)
-
 write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.csv")
 
 print("CSV saved :)")
 
+t_markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1)
 
 

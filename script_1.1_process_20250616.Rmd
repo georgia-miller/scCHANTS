@@ -37,18 +37,18 @@ library("viridis")
 ```
 
 # Create file path for saving plots
-Must create this directory and sub-directories e.g. demultiplex, QC, PCA, others
+Must create this directory and sub-directories e.g. demultiplex, QC, PCA
 ```{r}
-file_path <- "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/plots"
+file_path <- "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/plots"
 ```
 
 
 # Decompress the files
 ```{r}
 # only need to do once
-# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
-# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
-# gunzip("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
 
 ```
 
@@ -56,7 +56,7 @@ file_path <- "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d
 ```{r}
 # load the unzipped files
 # gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
-scCHANTS_data <- Read10X(data.dir = "/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
+scCHANTS_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
 
 # create seurat object
 # could add arguments for min.cells or min.features to be included
@@ -355,7 +355,7 @@ head(metadata)
 summary(metadata$nCount_RNA)
 
 # read in additional sample metadata
-metadata_samples <- read.csv("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/sample_metadata.csv")
+metadata_samples <- read.csv("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/sample_metadata.csv")
 
 head(metadata_samples)
 
@@ -962,10 +962,11 @@ pca16
 
 ## Remove clustering resolution columns
 ```{r}
-#scCHANTS_pbmc@meta.data <- scCHANTS_pbmc@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_pbmc@meta.data))]
+scCHANTS_pbmc@meta.data <- scCHANTS_pbmc@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_pbmc@meta.data))]
 
 # recluster with determined resolution
-#scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 0.6)
+scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 0.6)
+
 colnames(scCHANTS_pbmc@meta.data)
 Idents(scCHANTS_pbmc) <- "RNA_snn_res.0.6"
 
@@ -996,7 +997,7 @@ rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca
 Save before joining layers to find markers
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 ```{r}
-# saveRDS(object=scCHANTS_pbmc, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+# saveRDS(object=scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
 
 ```
 
@@ -1009,11 +1010,11 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
 
+# write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
+
 pbmc_markers %>%
     group_by(cluster) %>%
     dplyr::filter(avg_log2FC > 1)
-
-# write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
 ```
 
 # T cell pre-processing
@@ -1459,11 +1460,12 @@ pca11
 
 ## Remove clustering resolution columns
 ```{r}
-#scCHANTS_t@meta.data <- scCHANTS_t@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_t@meta.data))]
+scCHANTS_t@meta.data <- scCHANTS_t@meta.data[, !grepl("RNA_snn_res", colnames(scCHANTS_t@meta.data))]
 
 # recluster with determined resolution
-#scCHANTS_t <- FindClusters(scCHANTS_t, resolution = 0.7)
-#colnames(scCHANTS_t@meta.data)
+scCHANTS_t <- FindClusters(scCHANTS_t, resolution = 0.7)
+
+colnames(scCHANTS_t@meta.data)
 Idents(scCHANTS_t) <- "RNA_snn_res.0.7"
 
 ```
@@ -1490,7 +1492,7 @@ rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca
 Save before joining layers to find markers
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
 ```{r}
-# saveRDS(object=scCHANTS_t, file ="/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
+# saveRDS(object=scCHANTS_t, file ="/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
 
 ```
 
@@ -1502,9 +1504,10 @@ scCHANTS_t <- JoinLayers(scCHANTS_t)
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
+
+# write.csv(t_markers,"/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
+
 t_markers %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1)
-
-# write.csv(t_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
 ```

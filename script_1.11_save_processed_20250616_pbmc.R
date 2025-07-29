@@ -1,4 +1,4 @@
-# ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
+# ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc.R
 
 # Load packages
 
@@ -313,15 +313,14 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
     
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
-
-pbmc_markers %>%
-  group_by(cluster) %>%
-  dplyr::filter(avg_log2FC > 1)
     
 write.csv(pbmc_markers,"/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.csv")
 
 print("CSV saved :)")
-    
+
+pbmc_markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1)
     
     
     
