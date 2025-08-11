@@ -8,7 +8,7 @@ output:
 ---
 
 This script is a test script to work with 20250616_benchmark sample to set up a pipeline. It will explore the seurat file, plot and save various plots and determine the QC metrics for both PBMC and T cell sorted populations. 
-However, to save the processed seurat object, should run as abatch script, found ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R or ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
+However, to save the processed seurat object, should run as a batch script, found at ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R or ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
 
 * unzip files
 * load into a seurat object
@@ -39,16 +39,16 @@ library("viridis")
 # Create file path for saving plots
 Must create this directory and sub-directories e.g. demultiplex, QC, PCA
 ```{r}
-file_path <- "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/plots"
+file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/plots"
 ```
 
 
 # Decompress the files
 ```{r}
 # only need to do once
-# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
-# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
-# gunzip("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_benchmark/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_benchmark/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_benchmark/features.tsv.gz", temporary = TRUE, remove = FALSE)
 
 ```
 
@@ -56,7 +56,7 @@ file_path <- "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_be
 ```{r}
 # load the unzipped files
 # gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
-scCHANTS_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
+scCHANTS_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_benchmark/", gene.column=2)
 
 # create seurat object
 # could add arguments for min.cells or min.features to be included
@@ -355,7 +355,7 @@ head(metadata)
 summary(metadata$nCount_RNA)
 
 # read in additional sample metadata
-metadata_samples <- read.csv("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/sample_metadata.csv")
+metadata_samples <- read.csv("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/sample_metadata.csv")
 
 head(metadata_samples)
 
@@ -997,7 +997,7 @@ rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca
 Save before joining layers to find markers
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_pbmc_rds.R
 ```{r}
-# saveRDS(object=scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+# saveRDS(object=scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
 
 ```
 
@@ -1010,7 +1010,7 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
 
-# write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
+# write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
 
 pbmc_markers %>%
     group_by(cluster) %>%
@@ -1492,7 +1492,7 @@ rm(hvf_info, p, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca9, pca10, pca
 Save before joining layers to find markers
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
 ```{r}
-# saveRDS(object=scCHANTS_t, file ="/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
+# saveRDS(object=scCHANTS_t, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_processed.Rds")
 
 ```
 
@@ -1505,7 +1505,7 @@ scCHANTS_t <- JoinLayers(scCHANTS_t)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
 
-# write.csv(t_markers,"/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
+# write.csv(t_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
 
 t_markers %>%
   group_by(cluster) %>%
