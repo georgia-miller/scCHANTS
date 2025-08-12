@@ -321,6 +321,4 @@ print("CSV saved :)")
 pbmc_markers %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1)
-    
-    
-    
+  

@@ -2,7 +2,7 @@
 
 # Load packages
 
-#! check correct file is loaded, saved, that quality control and dims metrics have been changed, and PBMC vs T cell
+#! check correct file is loaded, saved, that quality control metrics and dims have been changed, and PBMC vs T cell
 library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
