@@ -27,19 +27,18 @@ Can also search for " # ggsave" and replace with "## ggsave" or vice versa
 
 ## Load packages
 ```{r}
-library("R.utils")    # need for decompressing files
+#library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
 library("ggplot2")
-library("clustree")
 library("patchwork")
-library("viridis")
 ```
 
 ## Create file path for saving plots
 Must create this directory and sub-directories e.g. demultiplex, QC, PCA
 ```{r}
 file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/plots"
+#file_path <- "~/scCHANTS/20250805_run1/plots"
 ```
 
 # Donor 55
@@ -58,6 +57,7 @@ file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/plots"
 # load the unzipped files
 # gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
 scCHANTS_055_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_run1_055/", gene.column=2)
+# scCHANTS_055_data <- Read10X(data.dir = "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/donor_055/20250805_run1_055", gene.column=2)
 
 # create seurat object
 # could add arguments for min.cells or min.features to be included
