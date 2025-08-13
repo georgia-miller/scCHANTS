@@ -1,5 +1,5 @@
 ---
-title: "script_1.21_analyse_20250616_pbmc"
+title: "script_1.3a_analyse_20250616_pbmc"
 author: "GKM"
 date: "2025-07-25"
 output:
@@ -21,12 +21,12 @@ library("tidyr")
 # Create file path for saving plots
 Must create this directory and sub-directories e.g. demultiplex, QC, PCA, others
 ```{r}
-file_path <- "/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/plots/PBMC_plots"
+file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/plots/PBMC_plots"
 ```
 
 ```{r}
 # load seurat object
-scCHANTS_pbmc <- readRDS("/cephfs/volumes/hpc_data_prj/id_hill_sims_wellcda/c1947608-5b3a-4d60-8179-b8e0779d7319/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
+scCHANTS_pbmc <- readRDS("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_processed.Rds")
 
 # check has pca and umap saved
 names(scCHANTS_pbmc@reductions)
@@ -37,7 +37,7 @@ colnames(scCHANTS_pbmc@meta.data)
 Idents(scCHANTS_pbmc) <- "RNA_snn_res.0.6"
 
 # load in cluster markers
-pbmc_markers <- read_csv("/scratch/prj/id_hill_sims_wellcda/scratch_tmp/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.csv")
+pbmc_markers <- read_csv("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.csv")
 
 head(pbmc_markers)
 

@@ -409,10 +409,10 @@ length(Cells(scCHANTS_t@assays$ADT))
 ```
 
 
-# Script 1.1b Processing (QC, PCA, clustering, UMAPs)
+# Processing (QC, PCA, clustering, UMAPs)
 
 
-# PBMC pre-processing
+# 1.1a PBMC pre-processing
 
 ## Quality control on PBMCs
 ```{r fig.dim = c(7,8)}
@@ -523,7 +523,7 @@ qc3 <- ggplot(pbmc_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) +
   theme_minimal()
 qc3
-# ggsave("QC_barplot.png", plot = qc3, device = png, height = 8, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
+# ggsave("QC_barplot_postQC.png", plot = qc3, device = png, bg = "white", height = 8, width = 15, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC/") )
 ```
 
 
@@ -1022,7 +1022,8 @@ pbmc_markers %>%
     dplyr::filter(avg_log2FC > 1)
 ```
 
-# T cell pre-processing
+
+# 1.1b T cell pre-processing
 ## Quality control on T cells
 
 ```{r fig.dim = c(7,8)}
@@ -1137,7 +1138,7 @@ qc3 <- ggplot(t_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1)) +
   theme_minimal()
 qc3
-# ggsave("QC_barplot.png", plot = qc3, device = png, height = 8, width = 15, unit = "cm", path = paste0(file_path, "/T_plots/QC/") )
+# ggsave("QC_barplot_postQC.png", plot = qc3, device = png, bg = "white", height = 8, width = 15, unit = "cm", path = paste0(file_path, "/T_plots/QC/") )
 ```
 
 
