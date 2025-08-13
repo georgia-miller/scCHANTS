@@ -1,5 +1,5 @@
 ---
-title: "script_2.1_process_20250805"
+title: "script_2.1_demux_qc_20250805_055"
 author: "GKM"
 date: "2025-08-11"
 output:
@@ -7,7 +7,7 @@ output:
     keep_md: TRUE
 ---
 
-This script is a pipeline to process 20250805_run1 samples from donor 55. It will explore the seurat file, plot and save various plots and determine the QC metrics for both PBMC and T cell sorted populations. 
+This script is a pipeline to do pre-processing 20250805_run1 samples from donor 55. It will explore the seurat file, plot and save various plots and determine the QC metrics for both PBMC and T cell sorted populations. 
 However, to save the processed seurat object, should run as a batch script where all donors are processed and merged, found at ~/R/scCHANTS/script_2.1_save_processed_20250805_rds.R
 
 * unzip files
@@ -23,6 +23,8 @@ However, to save the processed seurat object, should run as a batch script where
 Before running bear in mind all plots will automatically be saved, I recommend copying plots to your OneDrive folder as you generate them in case of overwriting (though they should be the same!)
 Can also search for " # ggsave" and replace with "## ggsave" or vice versa
 
+# Donor 55
+
 # Script 2.1 Load and HTO demultiplex
 
 ## Load packages
@@ -37,11 +39,11 @@ library("patchwork")
 ## Create file path for saving plots
 Must create this directory and sub-directories e.g. demultiplex, QC, PCA
 ```{r}
-file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/plots"
-#file_path <- "~/scCHANTS/20250805_run1/plots"
+#file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/plots"
+file_path <- "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/plots/"
 ```
 
-# Donor 55
+
 ## Load data & rename HTO and ADTs
 ```{r}
 ## Decompress the files
@@ -56,8 +58,8 @@ file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/plots"
 
 # load the unzipped files
 # gene.column = 2 gives gene symbol/name instead of ENSEMBL ID
-scCHANTS_055_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_run1_055/", gene.column=2)
-# scCHANTS_055_data <- Read10X(data.dir = "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/donor_055/20250805_run1_055", gene.column=2)
+#scCHANTS_055_data <- Read10X(data.dir = "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_run1_055/", gene.column=2)
+scCHANTS_055_data <- Read10X(data.dir = "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/donor_055/20250805_run1_055", gene.column=2)
 
 # create seurat object
 # could add arguments for min.cells or min.features to be included
@@ -365,7 +367,9 @@ head(metadata)
 summary(metadata$nCount_RNA)
 
 # read in additional sample metadata
-metadata_samples <- read.csv("/scratch/prj/id_hill_sims_wellcda/scCHANTS/sample_metadata.csv")
+#metadata_samples <- read.csv("/scratch/prj/id_hill_sims_wellcda/scCHANTS/sample_metadata.csv")
+metadata_samples <- read.csv("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/sample_metadata.csv")
+
 
 head(metadata_samples)
 
@@ -409,6 +413,13 @@ metadata[14:17, 14:17]
 ## Separate PBMC and sorted T cell samples
 Check all assays have same number of cells after
 ```{r}
+# order timepoints
+timepoint_levels <- c("0", "7", "28", "benchmark")
+scCHANTS_055$timepoint <- factor(
+  scCHANTS_055$timepoint,
+  levels = timepoint_levels
+)
+
 print("Full scCHANTS")
 DefaultAssay(scCHANTS_055) <- "RNA"
 length(Cells(scCHANTS_055@assays$RNA))
@@ -421,12 +432,14 @@ length(Cells(scCHANTS_pbmc_055@assays$RNA))
 length(Cells(scCHANTS_pbmc_055@assays$HTO))
 length(Cells(scCHANTS_pbmc_055@assays$ADT))
 
+# keep benchmark in T cell samples for now
 print("T cells filtered scCHANTS")
-scCHANTS_t_055 <- subset(scCHANTS_055, subset = PBMC_or_T == "T")
+scCHANTS_t_055 <- subset(scCHANTS_055, subset = PBMC_or_T == "T" | sample_id == "13")
 length(Cells(scCHANTS_t_055@assays$RNA))
 length(Cells(scCHANTS_t_055@assays$HTO))
 length(Cells(scCHANTS_t_055@assays$ADT))
 ```
+
 
 
 
@@ -461,7 +474,7 @@ VlnPlot(scCHANTS_pbmc_055, features = "nFeature_RNA", group.by = "timepoint") +
 
 # one cell here has extremely high mt (80%) so must control axes to look at the majority of cells
 VlnPlot(scCHANTS_pbmc_055, features = "percent_mt", group.by = "timepoint") +
-  coord_cartesian(ylim = c(0, 20))  +
+  coord_cartesian(ylim = c(0, 10))  +
   scale_y_continuous(n.breaks = 10) 
 
 
@@ -606,7 +619,7 @@ mt_rb3 <- FeatureScatter(scCHANTS_pbmc_055, feature1 = "percent_mt", feature2 = 
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
 qc6 <- (ft3 + mt3) / (rb3 + mt_rb3)
 qc6
-# ggsave("QC_scatterplots_postQC_055.png", plot = qc6, device = png, height = 22, width = 35, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC_055/") )
+# ggsave("QC_scatterplots_postQC_055.png", plot = qc6, device = png, height = 18, width = 35, unit = "cm", path = paste0(file_path, "/PBMC_plots/QC_055/") )
 ```
 
 
@@ -622,7 +635,7 @@ rb4 <- FeatureScatter(scCHANTS_pbmc_055, feature1 = "nCount_RNA", feature2 = "pe
   theme(legend.position="none") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
 mt_rb4 <- FeatureScatter(scCHANTS_pbmc_055, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
-  #theme(legend.position="none") +
+  theme(legend.position="none") +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
 qc7 <- (ft4 + mt4) / (rb4 + mt_rb4)
 qc7
@@ -643,6 +656,218 @@ rm(ft, ft2, ft3, ft4, mt, mt2, mt3, mt4, mt_rb, mt_rb2, mt_rb3, mt_rb4, pbmc_qc,
 ```
 
 
+
+
+# Script 2.1b T cell Quality Control
+## Quality control on ts
+```{r fig.dim = c(7,8)}
+# calculate mt contamination and add column to metadata
+scCHANTS_t_055[["percent_mt"]] <- PercentageFeatureSet(scCHANTS_t_055, pattern = "^MT-")
+
+# calculate mt contamination and add column to metadata
+scCHANTS_t_055[["percent_rb"]] <- PercentageFeatureSet(scCHANTS_t_055, pattern = "^RP[SL]")
+
+# plot on violin plot
+qc1 <- VlnPlot(scCHANTS_t_055, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), group.by = "timepoint", ncol = 2, alpha = 0.3)
+## before filtering if mt counts are at 0 check you're in RNA assay as default, check head(rownames(scCHANTS_t_055)) shows gene names
+qc1
+# ggsave("QC_violinplots_055.png", plot = qc1, device = png, height = 20, width = 20, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+
+```
+
+
+```{r}
+# can look in more detail if needed e.g.
+VlnPlot(scCHANTS_t_055, features = "nFeature_RNA", group.by = "timepoint") +
+  coord_cartesian(ylim = c(0, 1500)) +
+  scale_y_continuous(n.breaks = 10) 
+
+VlnPlot(scCHANTS_t_055, features = "nFeature_RNA", group.by = "timepoint") +
+  coord_cartesian(ylim = c(1500, 4000)) +
+  scale_y_continuous(n.breaks = 10) 
+
+# one cell here has extremely high mt (80%) so must control axes to look at the majority of cells
+VlnPlot(scCHANTS_t_055, features = "percent_mt", group.by = "timepoint") +
+  coord_cartesian(ylim = c(0, 10))  +
+  scale_y_continuous(n.breaks = 10) 
+
+
+# feature scatter
+ft <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "timepoint") +
+  theme(legend.position="none")
+mt <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_mt", group.by = "timepoint") + 
+  coord_cartesian(ylim = c(0, 20)) +
+  theme(legend.position="none")
+rb <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_rb", group.by = "timepoint") +
+  theme(legend.position="none")
+mt_rb <- FeatureScatter(scCHANTS_t_055, feature1 = "percent_mt", feature2 = "percent_rb", group.by = "timepoint") +
+  coord_cartesian(xlim = c(0, 20)) +
+  theme(legend.position="none")
+qc2 <- (ft + mt) / (rb + mt_rb)
+qc2
+# ggsave("QC_scatterplots_055.png", plot = qc2, device = png, height = 18, width = 20, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+
+# to see legend
+FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "timepoint")
+
+
+# plot timepoints separately instead, colour by sample
+Idents(scCHANTS_t_055) <- "sample_id"
+ft2 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+mt2 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "timepoint") + 
+  theme(legend.position="none") +
+  coord_cartesian(ylim = c(0, 20)) +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+rb2 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "timepoint") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+mt_rb2 <- FeatureScatter(scCHANTS_t_055, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "timepoint") +
+  theme(legend.position="none") +
+  coord_cartesian(xlim = c(0, 20)) +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+qc3 <- (ft2 + mt2) / (rb2 + mt_rb2)
+qc3
+# ggsave("QC_scatterplots_split_055.png", plot = qc3, device = png, height = 18, width = 35, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+
+# to see legend
+FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint")
+
+```
+
+## Do subsetting
+```{r}
+# can subset straightaway based on QC metrics e.g. :
+#scCHANTS_t_055 <- subset(scCHANTS_t_055, subset = nFeature_RNA > 1100  & nFeature_RNA < 4000 & percent_mt < 7) 
+
+# or assign new metadata column
+# start with all cells labeled as "initial"
+scCHANTS_t_055$QC <- "initial"
+
+# label low nFeature_RNA (< 1100)
+## i.e. if nFeature_RNA < 1100 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
+
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$nFeature_RNA < 1100 & scCHANTS_t_055$QC == "initial",
+  "low_nFeature",
+  scCHANTS_t_055$QC
+)
+
+# label high nFeature_RNA (> 4000)
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$nFeature_RNA > 4000 & scCHANTS_t_055$QC == "initial",
+  "high_nFeature",
+  scCHANTS_t_055$QC
+)
+
+# label high mitochondrial content (> 7%)
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$percent_mt > 7 & scCHANTS_t_055$QC == "initial",
+  "high_mt",
+  scCHANTS_t_055$QC
+)
+
+# label combined: low_nFeature + high_mt
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$nFeature_RNA < 1100 & scCHANTS_t_055$percent_mt > 7 & scCHANTS_t_055$QC != "pass",
+  "low_nFeature_high_mt",
+  scCHANTS_t_055$QC
+)
+
+# label combined: high_nFeature + high_mt
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$nFeature_RNA > 4000 & scCHANTS_t_055$percent_mt > 7 & scCHANTS_t_055$QC != "pass",
+  "high_nFeature_high_mt",
+  scCHANTS_t_055$QC
+)
+
+# finally, label cells that pass all filters
+scCHANTS_t_055$QC <- ifelse(
+  scCHANTS_t_055$nFeature_RNA >= 1100 &
+    scCHANTS_t_055$nFeature_RNA <= 4000 &
+    scCHANTS_t_055$percent_mt <= 7 &
+    scCHANTS_t_055$QC == "initial",
+  "pass",
+  scCHANTS_t_055$QC
+)
+
+```
+
+## Replot QC plots, separated by QC result
+```{r}
+# look at proportion of QC results
+table(scCHANTS_t_055@meta.data$QC)
+
+t_qc <- table(scCHANTS_t_055@meta.data$QC) %>%  
+  as.data.frame() %>% 
+  mutate(percent = Freq / sum(Freq) * 100)
+
+qc4 <- ggplot(t_qc, mapping = aes(x = Var1, y = percent, fill = Var1)) +
+  theme_minimal() +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+qc4
+# ggsave("QC_barplot_postQC_055.png", plot = qc4, device = png, bg = "white", height = 8, width = 15, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+```
+
+
+```{r fig.dim = c(7,10)}
+# plot on violin plot
+qc5 <- VlnPlot(scCHANTS_t_055, features = c("nFeature_RNA", "nCount_RNA", "percent_mt", "percent_rb"), ncol = 2, alpha = 0.3, group.by = "QC")
+qc5
+# ggsave("QC_violinplots_postQC_055.png", plot = qc5, device = png, height = 25, width = 20, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+
+# feature scatter, coloured by QC overlaid
+ft3 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "timepoint", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt3 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "timepoint", group.by = "QC") + 
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+rb3 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt_rb3 <- FeatureScatter(scCHANTS_t_055, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "timepoint", group.by = "QC") 
+theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+qc6 <- (ft3 + mt3) / (rb3 + mt_rb3)
+qc6
+# ggsave("QC_scatterplots_postQC_055.png", plot = qc6, device = png, height = 18, width = 35, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+```
+
+
+```{r fig.dim = c(10,10)}
+# feature scatter, coloured by QC split
+ft4 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt4 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_mt", split.by = "QC", group.by = "QC") + 
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+rb4 <- FeatureScatter(scCHANTS_t_055, feature1 = "nCount_RNA", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+mt_rb4 <- FeatureScatter(scCHANTS_t_055, feature1 = "percent_mt", feature2 = "percent_rb", split.by = "QC", group.by = "QC") +
+  #theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
+qc7 <- (ft4 + mt4) / (rb4 + mt_rb4)
+qc7
+# ggsave("QC_scatterplots_postQC_split_055.png", plot = qc7, device = png, height = 18, width = 35, unit = "cm", path = paste0(file_path, "/t_plots/QC_055/") )
+```
+
+Subset QCd ts
+```{r}
+scCHANTS_t_055 <- subset(scCHANTS_t_055, subset = QC == "pass")
+length(Cells(scCHANTS_t_055@assays$RNA))
+length(Cells(scCHANTS_t_055@assays$HTO))
+length(Cells(scCHANTS_t_055@assays$ADT))
+```
+
+## Remove QC plots to save memory
+```{r}
+rm(ft, ft2, ft3, ft4, mt, mt2, mt3, mt4, mt_rb, mt_rb2, mt_rb3, mt_rb4, t_qc, qc1, qc2, qc3, qc4, qc5, qc6, qc7, rb, rb2, rb3, rb4) 
+```
 
 
 
