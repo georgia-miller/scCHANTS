@@ -530,7 +530,7 @@ FeatureScatter(scCHANTS_pbmc_090, feature1 = "nCount_RNA", feature2 = "nFeature_
 ## Do subsetting
 ```{r}
 # can subset straightaway based on QC metrics e.g. :
-#scCHANTS_pbmc_090 <- subset(scCHANTS_pbmc_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 6) 
+#scCHANTS_pbmc_090 <- subset(scCHANTS_pbmc_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 7) 
 
 # or assign new metadata column
 # start with all cells labeled as "initial"
@@ -552,23 +552,23 @@ scCHANTS_pbmc_090$QC <- ifelse(
   scCHANTS_pbmc_090$QC
 )
 
-# label high mitochondrial content (> 6%)
+# label high mitochondrial content (> 7%)
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC == "initial",
+  scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC == "initial",
   "high_mt",
   scCHANTS_pbmc_090$QC
 )
 
 # label combined: low_nFeature + high_mt
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA < 1000 & scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC != "pass",
+  scCHANTS_pbmc_090$nFeature_RNA < 1000 & scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC != "pass",
   "low_nFeature_high_mt",
   scCHANTS_pbmc_090$QC
 )
 
 # label combined: high_nFeature + high_mt
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA > 4000 & scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC != "pass",
+  scCHANTS_pbmc_090$nFeature_RNA > 4000 & scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC != "pass",
   "high_nFeature_high_mt",
   scCHANTS_pbmc_090$QC
 )
@@ -577,7 +577,7 @@ scCHANTS_pbmc_090$QC <- ifelse(
 scCHANTS_pbmc_090$QC <- ifelse(
   scCHANTS_pbmc_090$nFeature_RNA >= 1000 &
     scCHANTS_pbmc_090$nFeature_RNA <= 4000 &
-    scCHANTS_pbmc_090$percent_mt <= 6 &
+    scCHANTS_pbmc_090$percent_mt <= 7 &
     scCHANTS_pbmc_090$QC == "initial",
   "pass",
   scCHANTS_pbmc_090$QC
@@ -744,7 +744,7 @@ FeatureScatter(scCHANTS_t_090, feature1 = "nCount_RNA", feature2 = "nFeature_RNA
 ## Do subsetting
 ```{r}
 # can subset straightaway based on QC metrics e.g. :
-#scCHANTS_t_090 <- subset(scCHANTS_t_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 6) 
+#scCHANTS_t_090 <- subset(scCHANTS_t_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 7) 
 
 # or assign new metadata column
 # start with all cells labeled as "initial"
@@ -766,23 +766,23 @@ scCHANTS_t_090$QC <- ifelse(
   scCHANTS_t_090$QC
 )
 
-# label high mitochondrial content (> 6%)
+# label high mitochondrial content (> 7%)
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC == "initial",
+  scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC == "initial",
   "high_mt",
   scCHANTS_t_090$QC
 )
 
 # label combined: low_nFeature + high_mt
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA < 1000 & scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC != "pass",
+  scCHANTS_t_090$nFeature_RNA < 1000 & scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC != "pass",
   "low_nFeature_high_mt",
   scCHANTS_t_090$QC
 )
 
 # label combined: high_nFeature + high_mt
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA > 4000 & scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC != "pass",
+  scCHANTS_t_090$nFeature_RNA > 4000 & scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC != "pass",
   "high_nFeature_high_mt",
   scCHANTS_t_090$QC
 )
@@ -791,7 +791,7 @@ scCHANTS_t_090$QC <- ifelse(
 scCHANTS_t_090$QC <- ifelse(
   scCHANTS_t_090$nFeature_RNA >= 1000 &
     scCHANTS_t_090$nFeature_RNA <= 4000 &
-    scCHANTS_t_090$percent_mt <= 6 &
+    scCHANTS_t_090$percent_mt <= 7 &
     scCHANTS_t_090$QC == "initial",
   "pass",
   scCHANTS_t_090$QC
