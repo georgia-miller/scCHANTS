@@ -24,6 +24,10 @@ library("patchwork")
 ```
 
 ```{r}
+! move into function? check counts have actually stayed. then join layers
+> scCHANTS_055_pbmc[["RNA"]] <- CreateAssayObject(
++     counts = scCHANTS_055_pbmc@assays$RNA$`counts.Gene Expression`
++ )
 demux_qc <- function(date, run, donor, pbmc_or_t = c("pbmc", "t"), remote = "no", clr_norm = 2, demux_positive = 0.99, nFeature_min, nFeature_max, mt_max) {
   
   # check all args are valid
@@ -274,10 +278,17 @@ scCHANTS_096_pbmc <- demux_qc(date = "20250805", run = "1", donor = "096", pbmc_
 
 ## Merge the donors
 ```{r}
+! move into function? check counts have actually stayed. then join layers
+> scCHANTS_055_pbmc[["RNA"]] <- CreateAssayObject(
++     counts = scCHANTS_055_pbmc@assays$RNA$`counts.Gene Expression`
++ )
+
 # merge the four seurat objects, add suffix to cell names
 scCHANTS_pbmc <- merge(scCHANTS_055_pbmc, c(scCHANTS_060_pbmc, scCHANTS_090_pbmc, scCHANTS_096_pbmc), add.cell.ids = c("D055", "D060", "D090", "D096"))
 
-# eahc donor is kept as a separate layer in the assays, join them together for downstream analysis
+# each donor is kept as a separate layer in the assays, join them together for downstream analysis
 scCHANTS_pbmc[["RNA"]] <- JoinLayers(scCHANTS_pbmc)
+
+
 ```
 

@@ -1506,7 +1506,9 @@ I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_1.11_save_processed_20250616_t_rds.R
 ```{r}
 # must join layers to do find markers
-scCHANTS_t <- JoinLayers(scCHANTS_t)
+! check joining layers is the right thing to do if run again
+scCHANTS_pbmc[["ADT"]] <- JoinLayers(scCHANTS_pbmc)
+scCHANTS_pbmc[["RNA"]] <- JoinLayers(scCHANTS_pbmc)
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
