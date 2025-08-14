@@ -27,7 +27,7 @@ Can search for "ggsave" and replace with "# ggsave" or vice versa to automatical
 
 ## Load packages
 ```{r}
-#library("R.utils")    # need for decompressing files
+# library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
 library("ggplot2")
@@ -182,7 +182,8 @@ DefaultAssay(scCHANTS_090) <- "HTO"
 scCHANTS_090 <- NormalizeData(scCHANTS_090, assay = "HTO", normalization.method = "CLR", margin = 2)
 
 # using default threshold (quantile of inferred negative distribution for each hashtag), default kfunc is clara (for fast k-medoids clustering on large applications, it is faster and more memory-efficient as it repeatedly samples subsets and clusters those)
-scCHANTS_090 <- HTODemux(scCHANTS_090, assay = "HTO", positive.quantile = 0.99, kfunc = "clara")
+# changed from default 0.99 as some overlap between HTOs not detected as doublets
+scCHANTS_090 <- HTODemux(scCHANTS_090, assay = "HTO", positive.quantile = 0.95, kfunc = "clara")
 ```
 
 ### Visualise demultiplexing
@@ -207,16 +208,14 @@ d1 <- RidgePlot(scCHANTS_090, assay = "HTO", features = rownames(scCHANTS_090[["
 d1
 # ggsave("HTO_1to4_ridgeplot_090.png", plot = d1, device = png, height = 25, width = 30, unit = "cm", path = paste0(file_path, "/demultiplex_090/") )
 
+p <- RidgePlot(scCHANTS_090, assay = "HTO", features = rownames(scCHANTS_090[["HTO"]])[1:2], ncol = 2, group.by = "HTO_classification")
+p
+# ggsave("HTO_1to2_ridgeplot_090.png", plot = p, device = png, height = 45, width = 30, unit = "cm", path = paste0(file_path, "/demultiplex_090/") )
+
 # look at pairs to see if mutually exclusive
 d2 <- FeatureScatter(scCHANTS_090, feature1 = "HTO-1", feature2 = "HTO-2")
 d2
 # ggsave("HTO_1vs2_featureplot_090.png", plot = d2, device = png, height = 10, width = 15, unit = "cm", bg = "white", path = paste0(file_path, "/demultiplex_090/") )
-
-FeatureScatter(scCHANTS_090, feature1 = "HTO-1", feature2 = "HTO-3")
-
-FeatureScatter(scCHANTS_090, feature1 = "HTO-2", feature2 = "HTO-3")
-
-FeatureScatter(scCHANTS_090, feature1 = "HTO-2", feature2 = "HTO-4")
 
 # compare number UMIs
 d3 <- VlnPlot(scCHANTS_090, features = "nCount_RNA", pt.size = 0.1, log = TRUE, group.by = "HTO_classification.global")
@@ -358,7 +357,7 @@ length(Cells(scCHANTS_090[["ADT"]]))
 rm(name_to_id, adt_mat, subset1, subset2, scCHANTS_nonegs, scCHANTS_singlets)
 
 # remove demultiplexing plots
-rm(d1, d2, d3, d4, d5, d6, d7, d8, d9)
+rm(d1, d2, d3, d4, d5, d6, d7, d8, d9, p)
 
 ```
 
@@ -531,17 +530,17 @@ FeatureScatter(scCHANTS_pbmc_090, feature1 = "nCount_RNA", feature2 = "nFeature_
 ## Do subsetting
 ```{r}
 # can subset straightaway based on QC metrics e.g. :
-#scCHANTS_pbmc_090 <- subset(scCHANTS_pbmc_090, subset = nFeature_RNA > 1100  & nFeature_RNA < 4000 & percent_mt < 7) 
+#scCHANTS_pbmc_090 <- subset(scCHANTS_pbmc_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 6) 
 
 # or assign new metadata column
 # start with all cells labeled as "initial"
 scCHANTS_pbmc_090$QC <- "initial"
 
-# label low nFeature_RNA (< 1100)
-## i.e. if nFeature_RNA < 1100 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
+# label low nFeature_RNA (< 1000)
+## i.e. if nFeature_RNA < 1000 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
 
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA < 1100 & scCHANTS_pbmc_090$QC == "initial",
+  scCHANTS_pbmc_090$nFeature_RNA < 1000 & scCHANTS_pbmc_090$QC == "initial",
   "low_nFeature",
   scCHANTS_pbmc_090$QC
 )
@@ -553,32 +552,32 @@ scCHANTS_pbmc_090$QC <- ifelse(
   scCHANTS_pbmc_090$QC
 )
 
-# label high mitochondrial content (> 7%)
+# label high mitochondrial content (> 6%)
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC == "initial",
+  scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC == "initial",
   "high_mt",
   scCHANTS_pbmc_090$QC
 )
 
 # label combined: low_nFeature + high_mt
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA < 1100 & scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC != "pass",
+  scCHANTS_pbmc_090$nFeature_RNA < 1000 & scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC != "pass",
   "low_nFeature_high_mt",
   scCHANTS_pbmc_090$QC
 )
 
 # label combined: high_nFeature + high_mt
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA > 4000 & scCHANTS_pbmc_090$percent_mt > 7 & scCHANTS_pbmc_090$QC != "pass",
+  scCHANTS_pbmc_090$nFeature_RNA > 4000 & scCHANTS_pbmc_090$percent_mt > 6 & scCHANTS_pbmc_090$QC != "pass",
   "high_nFeature_high_mt",
   scCHANTS_pbmc_090$QC
 )
 
 # finally, label cells that pass all filters
 scCHANTS_pbmc_090$QC <- ifelse(
-  scCHANTS_pbmc_090$nFeature_RNA >= 1100 &
+  scCHANTS_pbmc_090$nFeature_RNA >= 1000 &
     scCHANTS_pbmc_090$nFeature_RNA <= 4000 &
-    scCHANTS_pbmc_090$percent_mt <= 7 &
+    scCHANTS_pbmc_090$percent_mt <= 6 &
     scCHANTS_pbmc_090$QC == "initial",
   "pass",
   scCHANTS_pbmc_090$QC
@@ -685,7 +684,7 @@ qc1
 ```{r}
 # can look in more detail if needed e.g.
 VlnPlot(scCHANTS_t_090, features = "nFeature_RNA", group.by = "timepoint") +
-  coord_cartesian(ylim = c(0, 1500)) +
+  coord_cartesian(ylim = c(0, 1700)) +
   scale_y_continuous(n.breaks = 10) 
 
 VlnPlot(scCHANTS_t_090, features = "nFeature_RNA", group.by = "timepoint") +
@@ -745,17 +744,17 @@ FeatureScatter(scCHANTS_t_090, feature1 = "nCount_RNA", feature2 = "nFeature_RNA
 ## Do subsetting
 ```{r}
 # can subset straightaway based on QC metrics e.g. :
-#scCHANTS_t_090 <- subset(scCHANTS_t_090, subset = nFeature_RNA > 1100  & nFeature_RNA < 4000 & percent_mt < 7) 
+#scCHANTS_t_090 <- subset(scCHANTS_t_090, subset = nFeature_RNA > 1000  & nFeature_RNA < 4000 & percent_mt < 6) 
 
 # or assign new metadata column
 # start with all cells labeled as "initial"
 scCHANTS_t_090$QC <- "initial"
 
-# label low nFeature_RNA (< 1100)
-## i.e. if nFeature_RNA < 1100 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
+# label low nFeature_RNA (< 1000)
+## i.e. if nFeature_RNA < 1000 (and previously passed QC as cautionary step), call it low_nFeature, otherwise leave as initial
 
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA < 1100 & scCHANTS_t_090$QC == "initial",
+  scCHANTS_t_090$nFeature_RNA < 1000 & scCHANTS_t_090$QC == "initial",
   "low_nFeature",
   scCHANTS_t_090$QC
 )
@@ -767,32 +766,32 @@ scCHANTS_t_090$QC <- ifelse(
   scCHANTS_t_090$QC
 )
 
-# label high mitochondrial content (> 7%)
+# label high mitochondrial content (> 6%)
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC == "initial",
+  scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC == "initial",
   "high_mt",
   scCHANTS_t_090$QC
 )
 
 # label combined: low_nFeature + high_mt
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA < 1100 & scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC != "pass",
+  scCHANTS_t_090$nFeature_RNA < 1000 & scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC != "pass",
   "low_nFeature_high_mt",
   scCHANTS_t_090$QC
 )
 
 # label combined: high_nFeature + high_mt
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA > 4000 & scCHANTS_t_090$percent_mt > 7 & scCHANTS_t_090$QC != "pass",
+  scCHANTS_t_090$nFeature_RNA > 4000 & scCHANTS_t_090$percent_mt > 6 & scCHANTS_t_090$QC != "pass",
   "high_nFeature_high_mt",
   scCHANTS_t_090$QC
 )
 
 # finally, label cells that pass all filters
 scCHANTS_t_090$QC <- ifelse(
-  scCHANTS_t_090$nFeature_RNA >= 1100 &
+  scCHANTS_t_090$nFeature_RNA >= 1000 &
     scCHANTS_t_090$nFeature_RNA <= 4000 &
-    scCHANTS_t_090$percent_mt <= 7 &
+    scCHANTS_t_090$percent_mt <= 6 &
     scCHANTS_t_090$QC == "initial",
   "pass",
   scCHANTS_t_090$QC

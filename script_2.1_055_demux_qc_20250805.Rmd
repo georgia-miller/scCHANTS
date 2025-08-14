@@ -27,7 +27,7 @@ Can search for "ggsave" and replace with "# ggsave" or vice versa to automatical
 
 ## Load packages
 ```{r}
-#library("R.utils")    # need for decompressing files
+# library("R.utils")    # need for decompressing files
 library("dplyr")
 library("Seurat")
 library("ggplot2")
@@ -52,9 +52,9 @@ May need to add "overwrite = TRUE" if already unzipped a file with the same name
 # gunzip("/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_run1_055/features.tsv.gz", temporary = TRUE, remove = FALSE)
 
 # or if on physical computer
- # gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
- # gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
- # gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/features.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/matrix.mtx.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/barcodes.tsv.gz", temporary = TRUE, remove = FALSE)
+# gunzip("/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/20250805_run1/20250805_run1_060/features.tsv.gz", temporary = TRUE, remove = FALSE)
 ```
 
 ```{r}
@@ -207,6 +207,10 @@ d1 <- RidgePlot(scCHANTS_055, assay = "HTO", features = rownames(scCHANTS_055[["
 d1
 # ggsave("HTO_1to4_ridgeplot_055.png", plot = d1, device = png, height = 25, width = 30, unit = "cm", path = paste0(file_path, "/demultiplex_055/") )
 
+p <- RidgePlot(scCHANTS_055, assay = "HTO", features = rownames(scCHANTS_055[["HTO"]])[1:2], ncol = 2, group.by = "HTO_classification")
+# ggsave("HTO_1to2_ridgeplot_055.png", plot = p, device = png, height = 45, width = 30, unit = "cm", path = paste0(file_path, "/demultiplex_055/") )
+p
+
 # look at pairs to see if mutually exclusive
 d2 <- FeatureScatter(scCHANTS_055, feature1 = "HTO-1", feature2 = "HTO-2")
 d2
@@ -352,7 +356,7 @@ length(Cells(scCHANTS_055[["ADT"]]))
 rm(name_to_id, adt_mat, subset1, subset2, scCHANTS_nonegs, scCHANTS_singlets)
 
 # remove demultiplexing plots
-rm(d1, d2, d3, d4, d5, d6, d7, d8, d9)
+rm(d1, d2, d3, d4, d5, d6, d7, d8, d9, p)
 
 ```
 
