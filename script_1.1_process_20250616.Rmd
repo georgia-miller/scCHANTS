@@ -1015,7 +1015,7 @@ scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
 
-# write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.Rds")
+# write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_pbmc_markers.csv")
 
 pbmc_markers %>%
     group_by(cluster) %>%
@@ -1513,7 +1513,7 @@ scCHANTS_pbmc[["RNA"]] <- JoinLayers(scCHANTS_pbmc)
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 t_markers <- FindAllMarkers(scCHANTS_t, only.pos = TRUE)
 
-# write.csv(t_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.Rds")
+# write.csv(t_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250616_benchmark/20250616_scCHANTS_t_markers.csv")
 
 t_markers %>%
   group_by(cluster) %>%
