@@ -21,6 +21,7 @@ library("dplyr")
 library("tidyr")
 library("Seurat")
 library("ggplot2")
+library("sctransform")
 library("patchwork")
 ```
 
@@ -351,8 +352,21 @@ DefaultAssay(scCHANTS_pbmc) <- "RNA"
 ```
 
 ## Processing
-```{r}
+If there are global differences between gorups, may have to split and normalise separately then merge/integrate
+```{r fig.dim = c(10,8)}
+# check how similar the groups are
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"), group.by = "donor")
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"), group.by = "timepoint")
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"), group.by = "treatment")
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"), group.by = "PBMC_or_T")
+VlnPlot(scCHANTS_pbmc, features = c("nFeature_RNA", "nCount_RNA", "percent_mt"), group.by = "sample_id")
+```
 
+vars.to.regress removes the effect of mitochondrial gene percentage as a tehcnical covariate from normalised expression values. Thus each gene's expression is adjusted to remove the influence of mitochondrial percentage (as high mt content cells often have biased gene expression profiles)
+vst v2 is the default, updated version (as of August 2025)
+```{r}
+# regress
+scCHANTS_pbmc <- SCTransform(scCHANTS_pbmc, vars.to.regress = "percent_mt", verbose = FALSE, vst.flavor = "v2")
 ```
 
 
@@ -365,11 +379,7 @@ Can also use SCTransform (also replaces FindVariableFeatures and ScaleData)
 ```{r fig.dim = c(10,7)}
 DefaultAssay(scCHANTS_pbmc) <- "RNA"
 DefaultLayer(scCHANTS_pbmc[["RNA"]])
-Hafemeister, C., Satija, R. Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biol 20, 296 (2019). https://doi.org/10.1186/s13059-019-1874-1
-- Vignette:
-https://satijalab.org/seurat/articles/sctransform_vignette.html
-- Explanation blog
-https://biostatsquid.com/sctransform-simple-explanation/
+
 # normalise
 scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, normalization.method = "LogNormalize", scale.factor = 10000)
 

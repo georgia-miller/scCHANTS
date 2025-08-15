@@ -508,7 +508,7 @@ head(vdj_annot2)
 
 # filter vdj
 vdj_filtered <- vdj_annot2 %>% 
-  filter(HTO_classification.global != "Doublet",
+  filter(HTO_classification.global == "Singlet",
          QC == "pass")
 
 # export
