@@ -1,5 +1,5 @@
 ---
-title: "script_2.2a_merge_process_pbmcs_20250805"
+title: "script_2.2a_merge_process_pbmc_20250805"
 author: "GKM"
 date: "2025-08-11"
 output:
@@ -819,20 +819,12 @@ rm(hvf_info, p, with_legend, pca1, pca2, pca3, pca4, pca5, pca6, pca7, pca8, pca
 ```
 
 
-
-## save PBMC pre-processed RDS (takes a long time)
-Save before joining layers to find markers
-I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_2.2_process_save_20250805_pbmc.R
-```{r}
-# saveRDS(object = scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_scCHANTS_pbmc_processed.Rds")
-
-```
-
 ## Find markers for clusters
 I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_2.2_process_save_20250805_pbmc.R
 ```{r}
-# must join layers to do find markers
-scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
+# recommended to do on RNA assay for differential expression, not SCT, normalise as default
+scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, assay = "RNA", normalization.method = "LogNormalize")
+DefaultAssay(scCHANTS_pbmc) <- "RNA"
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
@@ -841,5 +833,14 @@ pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
 
 pbmc_markers %>%
     group_by(cluster) %>%
-    dplyr::filter(avg_log2FC > 1)
+    dplyr::filter(avg_log2FC > 1) %>% 
+  head(n = 30)
+```
+
+## save PBMC pre-processed RDS (takes a long time)
+Save before joining layers to find markers
+I recommend running find markers and saveRDS as a batch script, see ~/R/scCHANTS/script_2.2_process_save_20250805_pbmc.R
+```{r}
+#saveRDS(object = scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_scCHANTS_pbmc_processed.Rds")
+
 ```

@@ -1,5 +1,5 @@
 
-# Script to do all processing of 20250805_run1_pbmcs
+# Script to do all processing of 20250805_run1_pbmc
   
 # combines: script_1.Rmd : HTO demultiplexing, add metadata, split into PBMC and T cells, do QC on PBMCs
 # and script_2a.Rmd which also : SCTransform normalisaiton, dimensional reduction (11 PCs), clustering (at resolution 0.7), saves the Rds, finds cluster biomarkers and saves them as a csv
@@ -321,15 +321,11 @@ colnames(scCHANTS_pbmc@meta.data)
 Idents(scCHANTS_pbmc) <- "SCT_snn_res.0.7"
 
 
-## save PBMC pre-processed RDS (takes a long time)
-
-saveRDS(object = scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_scCHANTS_pbmc_processed.Rds")
-
-
 ## Find markers for clusters
 
-# must join layers to do find markers
-scCHANTS_pbmc <- JoinLayers(scCHANTS_pbmc)
+# recommended to do on RNA assay for differential expression, not SCT, normalise as default
+scCHANTS_pbmc <- NormalizeData(scCHANTS_pbmc, assay = "RNA", normalization.method = "LogNormalize")
+DefaultAssay(scCHANTS_pbmc) <- "RNA"
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones
 pbmc_markers <- FindAllMarkers(scCHANTS_pbmc, only.pos = TRUE)
@@ -338,4 +334,12 @@ write.csv(pbmc_markers,"/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1
 
 pbmc_markers %>%
   group_by(cluster) %>%
-  dplyr::filter(avg_log2FC > 1)
+  dplyr::filter(avg_log2FC > 1) %>% 
+  head(n = 30)
+
+
+## save PBMC pre-processed RDS (takes a long time)
+
+saveRDS(object = scCHANTS_pbmc, file ="/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/20250805_scCHANTS_pbmc_processed.Rds")
+
+

@@ -1,0 +1,196 @@
+---
+title: "script_2.3a_analyse_pbmcs_20250805"
+author: "GKM"
+date: "2025-08-18"
+output:
+  html_document:
+    keep_md: TRUE
+---
+
+In script 2.1 and 2.2a, the 20250508 data was loaded, HTOs demultimplexed, filtered for QC, then dimensional reduction and clustering was performed. The processed seurat object was saved as were the cluster biomarkers.
+
+These can now be read in to avoid repeating the prior steps.
+
+```{r}
+library("dplyr")
+library("Seurat")
+library("ggplot2")
+library("readr")
+library("tidyr")
+library("patchwork")
+```
+
+# Create file path for saving plots
+```{r}
+#file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/"
+file_path <- "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/"
+
+plot_path <- paste0(file_path, "20250805_run1/plots/PBMC_plots/")
+```
+
+```{r}
+# load seurat object
+scCHANTS_pbmc <- readRDS(paste0(file_path, "20250805_run1/20250805_scCHANTS_pbmc_processed.Rds"))
+
+# check has pca and umap saved
+names(scCHANTS_pbmc@reductions)
+
+# check has RNA_snn_res column with cell_types
+colnames(scCHANTS_pbmc@meta.data)
+
+Idents(scCHANTS_pbmc) <- "seurat_clusters"
+
+metadata <- scCHANTS_pbmc@meta.data
+
+# load in cluster markers
+pbmc_markers <- read_csv(paste0(file_path, "20250805_run1/20250805_scCHANTS_pbmc_markers.csv"))
+
+head(pbmc_markers)
+
+```
+
+# Look at cluster markers
+
+
+can also: Classification power, ROC test while running findmarkers returns value 0-1 (random-perfect classification):
+cluster0.markers <- FindMarkers(scCHANTS_pbmc, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+    
+```{r fig.dim = c(10,15)}
+pbmc_markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>% 
+  arrange(avg_log2FC) %>% 
+  head()
+
+top10 <- pbmc_markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1) %>%
+    slice_head(n = 10) %>% # take top 10 genes for each cluster
+    ungroup()
+top10
+
+c1 <- DoHeatmap(scCHANTS_pbmc, features = top10$gene) 
+  NoLegend()
+c1
+# ggsave("top10_markers_heatmap.png", plot = c1, device = png, width = 17, height = 25, unit = "cm", path = paste0(file_path, "/cell_types/") )
+```
+
+```{r}
+c2 <- DimPlot(scCHANTS_pbmc, group.by = "seurat_clusters", label = TRUE)
+c2
+# ggsave("by_clusters_umap.png", plot = c2, device = png, width = 15, height = 10, unit = "cm", path = paste0(file_path, "/cell_types/") )
+```
+
+```{r fig.dim = c(15,15)}
+# 1 marker for each cluster
+c3 <- FeaturePlot(scCHANTS_pbmc, features = c("ITK", "IL1B", "CD74", "CRIP1", "GNLY", "CD74", "SELL", "RGCC", "CD8A", "TXN", "MT1X", "LINC02211"))
+c3
+# ggsave("top_marker_featureplots.png", plot = c3, device = png, width = 25, height = 20, unit = "cm", path = paste0(file_path, "/cell_types/") )
+
+c4 <- VlnPlot(scCHANTS_pbmc, features = c("ITK", "IL1B", "CD74", "CRIP1", "GNLY", "CD74", "SELL", "RGCC", "CD8A", "TXN", "MT1X", "LINC02211"))
+c4
+# ggsave("top_marker_vlnplots.png", plot = c4, device = png, width = 25, height = 20, unit = "cm", path = paste0(file_path, "/cell_types/") )
+
+```
+
+# Load known broad cell type markers in, make dotplot
+
+```{r fig.dim = c(12,10)}
+# plot dotplot of expected cell types for markers
+# read in binary tables for specific and broad cell types
+markers_binary_sp <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_specificcelltypes.csv"))
+
+markers_binary_br <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_broadcelltypes.csv"))
+         
+# has only broad cell types but all gene markers so can compare directly
+markers_binary_br2 <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_broadcelltypes_allmarkers.csv"))
+
+# make into long format so can plot dotplot
+markers_long_sp <- markers_binary_sp %>%
+  pivot_longer(
+    cols = -marker,
+    names_to = "cell_type",
+    values_to = "value"
+  ) %>% 
+  mutate(marker = factor(marker,
+                         levels = c("CD3D", "CD3E", "CD3G", "CCR7", "SELL", "CD8A", "CD8B", "LTB", "IL7R", "S100A4", "GZMB", "PRF1", "FCGR3A", "NKG7", "GNLY", "KLRC1", "CD14", "LYZ", "S100A9", "CSF3R", "CSF1R", "LYN", "IFITM1", "IFITM2", "IFITM3", "CD79A", "MS4A1", "CD1C", "ITGAX", "CLEC4C", "GP9", "ITGA2B", "PF4", "PPBP")),
+          cell_type = factor(cell_type,
+                             levels = c("CD4_naive", "CD4_memory", "CD8_naive", "CD8_memory", "NK_dim", "NK_bright", "mono_classic", "mono_nonclassic", "B_normal", "B_plasma", "DC_myeloid", "DC_plasmacytoid", "megak")))
+
+markers_long_br <- markers_binary_br %>%
+  pivot_longer(
+    cols = -marker,
+    names_to = "cell_type",
+    values_to = "value"
+  ) %>% 
+  mutate(marker = factor(marker,
+                         levels = c("CD3D", "CD3E", "CD3G", "CD8A", "CD8B", "GZMB", "PRF1", "CD14", "CD79A", "GP9", "ITGA2B", "PF4", "PPBP")),
+         cell_type = factor(cell_type,
+                             levels = c("CD4T", "CD8T", "NK", "mono", "B", "DC", "megak")))
+
+markers_long_br2 <- markers_binary_br2 %>%
+  pivot_longer(
+    cols = -marker,
+    names_to = "cell_type",
+    values_to = "value"
+  ) %>% 
+  mutate(marker = factor(marker,
+                         levels = c("CD3D", "CD3E", "CD3G", "CCR7", "SELL", "CD8A", "CD8B", "LTB", "IL7R", "S100A4", "GZMB", "PRF1", "FCGR3A", "NKG7", "GNLY", "KLRC1", "CD14", "LYZ", "S100A9", "CSF3R", "CSF1R", "LYN", "IFITM1", "IFITM2", "IFITM3", "CD79A", "MS4A1", "CD1C", "ITGAX", "CLEC4C", "GP9", "ITGA2B", "PF4", "PPBP")),
+          cell_type = factor(cell_type,
+                             levels = c("CD4T", "CD8T", "NK", "mono", "B", "DC", "megak")))
+
+```
+
+```{r fig.dim = c(12,10)}
+m1 <- ggplot(markers_long_sp, aes(x = marker, y = cell_type)) +
+  geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+m1
+#ggsave("specific_celltype_by_markerexp_dotplot.png", plot = m1, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+
+m2 <- ggplot(markers_long_br, aes(x = marker, y = cell_type)) +
+  geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+m2
+#ggsave("broad_celltype_by_markerexp_dotplot.png", plot = m2, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+
+m3 <- ggplot(markers_long_br2, aes(x = marker, y = cell_type)) +
+  geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+m3
+#ggsave("broad_celltype_by_allmarkerexp_dotplot.png", plot = m3, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+
+```
+
+```{r fig.dim = c(12,10)}
+marker_genes <- c("CD3D", "CD3E", "CD3G", "CCR7", "SELL", "CD8A", "CD8B", "LTB", "IL7R", "S100A4", "GZMB", "PRF1", "FCGR3A", "NKG7", "GNLY", "KLRC1", "CD14", "LYZ", "S100A9", "CSF3R", "CSF1R", "LYN", "IFITM1", "IFITM2", "IFITM3", "CD79A", "MS4A1", "CD1C", "ITGAX", "CLEC4C", "GP9", "ITGA2B", "PF4", "PPBP")
+
+d1 <- DotPlot(scCHANTS_pbmc, features = marker_genes, assay = "RNA", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+  coord_flip() +
+  ggtitle("scCHANTS PBMC cluster by marker exp run1")
+d1
+
+#ggsave("clusters_by_markerexp_dotplot.pdf", plot = d1, device = pdf, width = 20, height = 18, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+#ggsave("clusters_by_markerexp_dotplot.png", plot = d1, device = png, width = 20, height = 18, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+
+
+marker_genes_broad <- c("CD3D", "CD3E", "CD3G", "CD8A", "CD8B", "GZMB", "PRF1", "CD14", "CD79A", "GP9", "ITGA2B", "PF4", "PPBP")
+
+
+d2 <- DotPlot(scCHANTS_pbmc, features = marker_genes_broad, assay = "RNA", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+  coord_flip() +
+  ggtitle("scCHANTS PBMC cluster by marker exp run1")
+d2
+
+#ggsave("clusters_by_markerexp_dotplot_broad.pdf", plot = d2, device = pdf, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+#ggsave("clusters_by_markerexp_dotplot_broad.png", plot = d2, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+
+
+```
+
