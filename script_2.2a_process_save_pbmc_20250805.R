@@ -317,6 +317,8 @@ scCHANTS_pbmc <- FindNeighbors(scCHANTS_pbmc, dims = 1:11)
 
 scCHANTS_pbmc <- FindClusters(scCHANTS_pbmc, resolution = 0.7)
 
+scCHANTS_pbmc <- RunUMAP(scCHANTS_pbmc, dims = 1:11)
+
 colnames(scCHANTS_pbmc@meta.data)
 Idents(scCHANTS_pbmc) <- "SCT_snn_res.0.7"
 
