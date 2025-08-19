@@ -1,0 +1,379 @@
+---
+title: "script_2.4a_gene_signatures_pbmc_20250805"
+author: "GKM"
+date: "2025-08-19"
+output:
+  html_document:
+    keep_md: TRUE
+---
+
+```{r}
+library("dplyr")
+library("Seurat")
+library("ggplot2")
+library("readr")
+library("tidyr")
+library("patchwork")
+library("RColorBrewer")
+library("pheatmap")
+library("tibble")
+
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("dittoSeq")
+library("dittoSeq")
+```
+
+# Create file path for saving plots
+```{r}
+#file_path <- "/scratch/prj/id_hill_sims_wellcda/scCHANTS/20250805_run1/"
+file_path <- "/Users/k2477939/Library/CloudStorage/OneDrive-King\'sCollegeLondon/General\ -\ Laboratory\ of\ Molecular\ Immunotherapy\ and\ Antibiotics/Data/Georgia\ Miller/scCHANTS/"
+
+plot_path <- paste0(file_path, "20250805_run1/plots/PBMC_plots/")
+```
+
+```{r}
+# load seurat object
+scCHANTS_pbmc <- readRDS(paste0(file_path, "20250805_run1/20250805_scCHANTS_pbmc_processed.Rds"))
+
+# assign cell types as detemrined in script 2.3a
+cell_type <- c("T", "T", "T", "T", "T", "T", "B", "NK", "B", "NK", "T", "mono", "unknown", "unknown" )
+
+scCHANTS_pbmc$cell_type <- plyr::mapvalues(
+  Idents(scCHANTS_pbmc),
+  from = as.character(0:13),
+  to = cell_type
+)
+
+Idents(scCHANTS_pbmc) <- "cell_type"
+DefaultAssay(scCHANTS_pbmc) <- "SCT"
+
+# reorder timepoint
+scCHANTS_pbmc$timepoint <- factor(scCHANTS_pbmc$timepoint, levels = c("0", "7", "28", "benchmark"))
+
+metadata <- scCHANTS_pbmc@meta.data
+
+# load in cluster markers
+pbmc_markers <- read_csv(paste0(file_path, "20250805_run1/20250805_scCHANTS_pbmc_markers.csv"))
+
+```
+
+Basic exploratory plots, as saved in script 2.3a
+```{r}
+p1 <- DimPlot(scCHANTS_pbmc, reduction = "umap", label = TRUE, group.by = "seurat_clusters")
+p2 <- DimPlot(scCHANTS_pbmc, reduction = "umap", label = TRUE, group.by = "cell_type")
+p1|p2
+
+p3 <- DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "cell_type", split.by = "timepoint")
+p3
+
+# plot per donor per timepoint
+x <- lapply(donors, function(X) {
+  DimPlot(
+    subset(scCHANTS_pbmc, donor == X),
+    reduction = "umap",
+    group.by = "cell_type",
+    split.by = "timepoint"
+  ) + ggtitle(paste("Donor", X))
+})
+
+p4 <- x[[1]] / x[[2]] / x[[3]] / x[[4]]
+
+
+p5 <- DimPlot(scCHANTS_pbmc, reduction = "umap", alpha = 0.8, group.by = "cell_type", split.by = "treatment")
+p5
+
+#ggsave("treatment_celltype_umap.png", plot = p5, device = png, width = 17, height = 8, unit = "cm", path = paste0(plot_path, "umaps/") )
+
+
+p6 <- DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "treatment", split.by = "timepoint")
+p6
+
+#ggsave("treatment_timepoint_umap.png", plot = p6, device = png, width = 25, height = 8, unit = "cm", path = paste0(plot_path, "umaps/") )
+
+```
+
+
+
+
+# T cell subtypes
+Szabo's markers
+```{r}
+markers_binary_br_s <- read_csv(paste0(file_path, "marker_genes/Szabo/marker_genes_broadcelltypes_S.csv"))
+    
+markers_long_br_s <- markers_binary_br_s %>%
+  pivot_longer(
+    cols = -marker,
+    names_to = "cell_type",
+    values_to = "value"
+  ) %>% 
+  mutate(marker = factor(marker,
+                         levels = c("CCR7", "SELL", "TCF7", "IL2", "TNF", "IL4R", "FOXP3", "IL2RA", "CTLA4", "CXCR6", "ITGA1", "CCL5", "GZMB", "GZMK", "IFNG", "CCL4", "CCL3", "PRF1", "NKG7")),
+         cell_type = factor(cell_type,
+                             levels = c("CD4 rest", "CD4 act", "CD4 Treg", "CD4 TRM", "CD8 TEM/TRM rest", "CD8 TEM/TRM act", "CD8 TEMRA")))
+
+m5 <- ggplot(markers_long_br_s, aes(x = marker, y = cell_type)) +
+  geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+m5
+#ggsave("broad_Tcelltype_by_Smarkerexp_dotplot.png", plot = m5, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/Szabo") )
+
+```
+
+## Dotplots
+```{r}
+marker_genes_s <- c("CCR7", "SELL", "TCF7", "IL2", "TNF", "IL4R", "CXCR6", "ITGA1", "CCL5", "GZMB", "GZMK", "FOXP3", "IL2RA", "CTLA4", "IFNG", "CCL4", "CCL3", "PRF1", "NKG7")
+
+d7 <- pheatmap(scCHANTS_pbmc, features = marker_genes_s, assay = "RNA", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+  coord_flip() +
+  ggtitle("scCHANTS T subtypes by S marker exp run1")
+d7
+
+#ggsave("clusters_by_BMmarkerexp_dotplot.pdf", plot = d7, device = pdf, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+#ggsave("clusters_by_BMmarkerexp_dotplot.png", plot = d7, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+```
+
+## Heatmap
+per cell (but ~0)
+```{r}
+marker_counts <- GetAssayData(scCHANTS_pbmc, assay="SCT")
+marker_counts <- as.matrix(marker_counts[rownames(marker_counts) %in% marker_genes_s, ])
+marker_counts[1:4, 1:4]
+
+metadata_red <- metadata[rownames(metadata) %in% colnames(marker_counts), ] %>% 
+  select(sample_id, timepoint, treatment, date, run, donor, seurat_clusters, cell_type)
+
+# ensure same ordering of cells in both matrices
+common_cells <- intersect(colnames(marker_counts), rownames(metadata_red))
+
+# check below is TRUE (so that )i.e. no cells are in only counts not emtadata or vice versa)
+length(common_cells) == dim(marker_counts)[2]
+
+# choose annotation variables (e.g. sample_id, timepoint, cluster)
+annot_col <- metadata_red %>% 
+  select(seurat_clusters)
+
+# plot pheatmap
+pheatmap(
+  marker_counts,
+  show_rownames = TRUE,   # show gene names
+  show_colnames = FALSE,  # hide cell barcodes
+  cluster_cols = TRUE,    # cluster cells
+  #cluster_rows = TRUE,    # cluster genes
+  annotation_col = annot_col, # add metadata as annotation
+  scale = "row"           # scale gene expression for visibility
+)
+
+# or package
+dittoHeatmap(scCHANTS_pbmc, marker_genes_s,
+    annot.by = "seurat_clusters")
+```
+
+Mean and median pseudobulk
+For treated (stimulated)
+```{r}
+# get cluster identities
+scCHANTS_withbm <- scCHANTS_pbmc
+scCHANTS_pbmc_T <- subset(scCHANTS_pbmc, subset = timepoint != "benchmark" & treatment == "T")
+
+scCHANTS_pbmc_T$cluster_timepoint <- paste0(scCHANTS_pbmc_T$seurat_clusters, "_d", scCHANTS_pbmc_T$timepoint)
+Idents(scCHANTS_pbmc_T) <- "cluster_timepoint"
+clusters <- Idents(scCHANTS_pbmc_T)
+
+# subset to marker genes
+sct_mat_T <- GetAssayData(scCHANTS_pbmc_T, assay = "SCT", layer = "data")
+sct_mat_T <- sct_mat_T[rownames(sct_mat_T) %in% marker_genes_s, ]
+
+# calculate mean per cluster
+pseudo_mean_T <- sapply(levels(clusters), function(cl){ # take each unique value in clusters vector and apply the follow function over it
+  rowMeans(sct_mat_T[, clusters == cl, drop = FALSE]) # take the reduced sct gene x cell matrix, select all the cells that belong to the current lcuster (cl), if only one column then keep it as a matrix, then find the mean exp across all cells in the cluster for that row (gene)
+  # output for each cluster is a vector of mean values for eahc gene
+}) # sapply combines those vectors into a genes by clusters matrix
+
+# or median per cluster
+pseudo_median_T <- sapply(levels(clusters), function(cl){
+  apply(sct_mat_T[, clusters == cl, drop = FALSE], MARGIN = 1, FUN = median) # margin of 1 applies over rows (each gene), take the median for each
+})
+
+pheatmap::pheatmap(mat = pseudo_mean_T,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   #color = colors.use,
+                   color = colorRampPalette(c("white", "pink", "red"))(100),
+                   #breaks = my_breaks,
+                   main = "T cell subset markers mean exp by cluster T",
+                   #annotation_col = annot_col
+)
+
+pheatmap::pheatmap(mat = pseudo_mean_T,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   scale = "row",
+                   #color = colors.use,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   #breaks = my_breaks,
+                   main = "T cell subset markers mean exp scaled per gene T",
+                   #annotation_col = annot_col
+)
+
+pheatmap::pheatmap(mat = pseudo_median_T,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   #color = colors.use,
+                   #breaks = my_breaks,
+                   main = "T cell subset markers median exp by cluster T",
+                   #annotation_col = annot_col
+)
+
+```
+
+For untreated
+```{r}
+# get cluster identities
+scCHANTS_withbm <- scCHANTS_pbmc
+scCHANTS_pbmc_UT <- subset(scCHANTS_pbmc, subset = timepoint != "benchmark" & treatment == "UT")
+
+scCHANTS_pbmc_UT$cluster_UTimepoint <- paste0(scCHANTS_pbmc_UT$seurat_clusters, "_d", scCHANTS_pbmc_UT$timepoint)
+Idents(scCHANTS_pbmc_UT) <- "cluster_UTimepoint"
+clusters <- Idents(scCHANTS_pbmc_UT)
+
+# subset to marker genes
+sct_mat_UT <- GetAssayData(scCHANTS_pbmc_UT, assay = "SCT", layer = "data")
+sct_mat_UT <- sct_mat_UT[rownames(sct_mat_UT) %in% marker_genes_s, ]
+
+# calculate mean per cluster
+pseudo_mean_UT <- sapply(levels(clusters), function(cl){
+  rowMeans(sct_mat_UT[, clusters == cl, drop = FALSE])
+})
+
+# or median per cluster
+pseudo_median_UT <- sapply(levels(clusters), function(cl){
+  apply(sct_mat_UT[, clusters == cl, drop = FALSE], MARGIN = 1, FUN = median) # margin of 1 applies over rows (each gene), take the median for each
+})
+
+pheatmap::pheatmap(mat = pseudo_mean_UT,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   #color = colors.use,
+                   color = colorRampPalette(c("white", "pink", "red"))(100),
+                   #breaks = my_breaks,
+                   main = "T cell subset markers mean exp by cluster UT",
+                   #annotation_col = annot_col
+)
+
+pheatmap::pheatmap(mat = pseudo_mean_UT,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   scale = "row",
+                   #color = colors.use,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   #breaks = my_breaks,
+                   main = "T cell subset markers mean exp scaled per gene UT",
+                   #annotation_col = annot_col
+)
+
+pheatmap::pheatmap(mat = pseudo_median_UT,
+                   # complete is the default clustering method
+                   clustering_method = "complete",
+                   #color = colors.use,
+                   #breaks = my_breaks,
+                   main = "T cell subset markers median exp by cluster UT",
+                   #annotation_col = annot_col
+)
+
+```
+
+just 2 genes
+```{r}
+target_genes <- c("FOXP3", "CTLA4")
+
+# extract exp data
+sct_exp <- GetAssayData(scCHANTS_pbmc, assay = "SCT", slot = "data")[target_genes, ]
+
+# filter metadata
+metadata_red <- scCHANTS_pbmc@meta.data %>% 
+  select(seurat_clusters, timepoint, treatment)
+
+# convert to long df
+expr_df <- as.data.frame(as.matrix(sct_exp)) %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(-gene, names_to = "cell", values_to = "expression") %>%
+  left_join(metadata_red %>% rownames_to_column("cell"), by = "cell") %>% 
+  filter(seurat_clusters %in% c("3", "10"))
+
+summary_df <- expr_df %>%
+  group_by(seurat_clusters, timepoint, treatment, gene) %>%
+  summarize(mean_expression = mean(expression), .groups = "drop")
+
+plot <- ggplot(summary_df, aes(x = factor(timepoint, levels = c(0,7,28)), 
+                       y = mean_expression, 
+                       color = seurat_clusters, 
+                       group = seurat_clusters)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  facet_wrap(gene~treatment, scales = "free_y") +
+  labs(x = "Timepoint (days)", y = "Mean Expression", color = "Cluster") +
+  theme_minimal(base_size = 14)
+plot
+
+#ggsave("FOXP3_CTLA3_in_cl3_cl10_lineplot.png", plot = plot, device = png, width = 15, height = 12, unit = "cm", bg = "white", path = paste0(plot_path, "DEGs/") )
+```
+
+
+```{r}
+target_genes <- c("IFNG", "IFNGR1")
+
+# extract exp data
+sct_exp <- GetAssayData(scCHANTS_pbmc, assay = "SCT", slot = "data")[target_genes, ]
+
+# filter metadata
+metadata_red <- scCHANTS_pbmc@meta.data %>% 
+  select(seurat_clusters, timepoint, treatment)
+
+# convert to long df
+expr_df <- as.data.frame(as.matrix(sct_exp)) %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(-gene, names_to = "cell", values_to = "expression") %>%
+  left_join(metadata_red %>% rownames_to_column("cell"), by = "cell") %>%  
+  filter(seurat_clusters %in% c("2", "10", "12", "13"))
+
+summary_df <- expr_df %>%
+  group_by(seurat_clusters, timepoint, treatment, gene) %>%
+  summarize(mean_expression = mean(expression), .groups = "drop")
+
+plot2 <- ggplot(summary_df, aes(x = factor(timepoint, levels = c(0,7,28)), 
+                       y = mean_expression, 
+                       color = seurat_clusters, 
+                       group = seurat_clusters)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  facet_wrap(gene~treatment, scales = "free_y") +
+  labs(x = "Timepoint (days)", y = "Mean Expression", color = "Cluster") +
+  theme_minimal(base_size = 14)
+plot2
+
+#ggsave("IFNG_INGR1_all_cl_lineplot.png", plot = plot2, device = png, width = 15, height = 12, unit = "cm", bg = "white", path = paste0(plot_path, "DEGs/") )
+```
+
+```{r}
+# if needed
+pheatmap::pheatmap(mat = top_acts_mat,
+                             # complete is the default clustering method
+                             clustering_method = clustering,
+                             color = colors.use,
+                             border_color = "white",
+                             breaks = my_breaks,
+                             # can add cell width and height but if left as NA, size depends on plot window
+                             #cellwidth = 10,
+                             #cellheight = 10,
+                             treeheight_row = 20,
+                             treeheight_col = 20,
+                             main = plot_title
+  )
+```
+
+
+
+

@@ -1,5 +1,5 @@
 ---
-title: "script_2.3a_analyse_pbmcs_20250805"
+title: "script_2.3a_annotation_pbmc_20250805"
 author: "GKM"
 date: "2025-08-18"
 output:
@@ -11,13 +11,15 @@ In script 2.1 and 2.2a, the 20250508 data was loaded, HTOs demultiplexed, filter
 
 These can now be read in to avoid repeating the prior steps.
 
+This script focuses on cell type classificaiton/annotation.
+
 ```{r}
 library("dplyr")
 library("Seurat")
 library("ggplot2")
 library("readr")
-library("tidyr")
 library("patchwork")
+
 ```
 
 # Create file path for saving plots
@@ -99,12 +101,12 @@ c4
 ```{r fig.dim = c(12,10)}
 # plot dotplot of expected cell types for markers
 # read in binary tables for specific and broad cell types
-markers_binary_sp <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_specificcelltypes.csv"))
+markers_binary_sp <- read_csv(paste0(file_path, "marker_genes/Oelen/marker_genes_binary_specificcelltypes.csv"))
 
-markers_binary_br <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_broadcelltypes.csv"))
+markers_binary_br <- read_csv(paste0(file_path, "marker_genes/Oelen/marker_genes_binary_broadcelltypes.csv"))
          
 # has only broad cell types but all gene markers so can compare directly
-markers_binary_br2 <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_broadcelltypes_allmarkers.csv"))
+markers_binary_br2 <- read_csv(paste0(file_path, "marker_genes/Oelen/marker_genes_binary_broadcelltypes_allmarkers.csv"))
 
 # make into long format so can plot dotplot
 markers_long_sp <- markers_binary_sp %>%
@@ -149,7 +151,7 @@ m1 <- ggplot(markers_long_sp, aes(x = marker, y = cell_type)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
 m1
-#ggsave("specific_celltype_by_markerexp_dotplot.png", plot = m1, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+#ggsave("specific_celltype_by_markerexp_dotplot.png", plot = m1, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/Oelen/") )
 
 m2 <- ggplot(markers_long_br, aes(x = marker, y = cell_type)) +
   geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
@@ -157,7 +159,7 @@ m2 <- ggplot(markers_long_br, aes(x = marker, y = cell_type)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
 m2
-#ggsave("broad_celltype_by_markerexp_dotplot.png", plot = m2, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+#ggsave("broad_celltype_by_markerexp_dotplot.png", plot = m2, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/Oelen/") )
 
 m3 <- ggplot(markers_long_br2, aes(x = marker, y = cell_type)) +
   geom_point(aes(size = abs(value), fill = as.factor(value)), shape = 21, color = "black") +
@@ -165,7 +167,7 @@ m3 <- ggplot(markers_long_br2, aes(x = marker, y = cell_type)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
 m3
-#ggsave("broad_celltype_by_allmarkerexp_dotplot.png", plot = m3, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+#ggsave("broad_celltype_by_allmarkerexp_dotplot.png", plot = m3, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/Oelen/") )
 
 ```
 
@@ -211,20 +213,13 @@ d4
 
 ```
 
-
-
-
-
-
-
-
 ## Ben-Moshe et al markers
 ###  Load known cell type markers
 ```{r fig.dim = c(12,10)}
 # plot dotplot of expected cell types for markers
 
 # read in binary tables for specific and broad cell types
-markers_binary_br_bm <- read_csv(paste0(file_path, "marker_genes/marker_genes_binary_broadcelltypes_BM.csv"))
+markers_binary_br_bm <- read_csv(paste0(file_path, "marker_genes/Ben-Moshe/marker_genes_binary_broadcelltypes_BM.csv"))
     
 markers_long_br_bm <- markers_binary_br_bm %>%
   pivot_longer(
@@ -257,13 +252,13 @@ m4 <- ggplot(markers_long_br_bm, aes(x = marker, y = cell_type)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
 m4
-#ggsave("broad_celltype_by_BMmarkerexp_dotplot.png", plot = m4, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/") )
+#ggsave("broad_celltype_by_BMmarkerexp_dotplot.png", plot = m4, device = png, width = 16, height = 12, unit = "cm", bg = "white", path = paste0(file_path, "marker_genes/Ben-Moshe") )
 
 ```
 
 ### Dotplots
 ```{r fig.dim = c(12,10)}
-marker_genes_bm <- c("CD3D", "CD3G", "CD3E", "TRAC", "NKG7", "GNLY", "KLRD1", "GZMA", "GZMB", "PRF1", "HOPX", "MS4A4A", "MS4A7", "S100A9", "CYBB", "CTSD", "CTSB", "CTSL", "LYZ", "FSCN1", "LAMP3", "CXCL13", "CCL19", "CD79A", "CD79B", "MS4A1", "BANK1")
+marker_genes_bm <- c("CD3D", "CD3G", "CD3E", "TRAC", "NKG7", "GNLY", "KLRD1", "GZMA", "GZMB", "PRF1", "HOPX", "MS4A4A", "MS4A7", "S100A9", "CYBB", "CTSD", "CTSB", "CTSL", "LYZ", "FSCN1", "LAMP3", "CXCL13", "CCL19", "CD79A", "CD79B", "MS4A1", "BANK1", "CD72")
 
 d5 <- DotPlot(scCHANTS_pbmc, features = marker_genes_bm, assay = "RNA", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
   coord_flip() +
@@ -282,4 +277,139 @@ d6 <- VlnPlot(scCHANTS_pbmc, features = marker_genes_bm, assay = "RNA", group.by
 d6
 #ggsave("clusters_by_BMmarkerexp_vlnplot.png", plot = d6, device = png, width = 25, height = 96, unit = "cm", path = paste0(plot_path, "cell_types/") )
 
+```
+
+# More to do on clusters and markers but for now, give classification (see powerpoint) and move on to T cell subsetting
+Add cell type per cluster
+```{r}
+# cluster no.   0    1    2    3    4    5    6    7     8    9    10     11       12         13
+cell_type <- c("T", "T", "T", "T", "T", "T", "B", "NK", "B", "NK", "T", "mono", "unknown", "unknown" )
+
+scCHANTS_pbmc$cell_type <- plyr::mapvalues(
+  Idents(scCHANTS_pbmc),
+  from = as.character(0:13),
+  to = cell_type
+)
+
+Idents(scCHANTS_pbmc) <- "cell_type"
+
+# reorder timepoint and treatment
+scCHANTS_pbmc$timepoint <- factor(scCHANTS_pbmc$timepoint, levels = c("0", "7", "28", "benchmark"))
+scCHANTS_pbmc$treatment <- factor(scCHANTS_pbmc$treatment, levels = c("UT", "T"))
+
+metadata <- scCHANTS_pbmc@meta.data
+colnames(metadata)
+head(metadata$cell_type)
+head(metadata$seurat_clusters)
+
+p1 <- DimPlot(scCHANTS_pbmc, reduction = "umap", label = TRUE, group.by = "seurat_clusters")
+p2 <- DimPlot(scCHANTS_pbmc, reduction = "umap", label = TRUE, group.by = "cell_type")
+p3 <- p1|p2
+p3
+
+#ggsave("cell_type_classification_umap.png", plot = p3, device = png, width = 28, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+```
+
+```{r}
+DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "cell_type", split.by = "timepoint")
+
+#ggsave("by_timepoint_umap.png", plot = p3, device = png, width = 28, height = 12, unit = "cm", path = plot_path)
+
+# plot per donor per timepoint
+x <- lapply(donors, function(X) {
+  DimPlot(
+    subset(scCHANTS_pbmc, donor == X),
+    reduction = "umap",
+    group.by = "cell_type",
+    split.by = "timepoint"
+  ) + 
+    ggtitle(paste("Donor", X)) + 
+    NoLegend()
+})
+
+p4 <- (x[[1]] | x[[2]]) / (x[[3]] | x[[4]])
+p4
+
+# or stacked on top of each other
+p5 <- x[[1]] / x[[2]] / x[[3]] / x[[4]]
+p5
+
+#ggsave("cell_type_classification_by_donor_umap.png", plot = p4, device = png, width = 50, height = 20, unit = "cm", path = paste0(plot_path, "umaps/") )
+#ggsave("cell_type_classification_by_donor_umap_2.png", plot = p5, device = png, width = 25, height = 35, unit = "cm", path = paste0(plot_path, "umaps/") )
+```
+
+
+```{r}
+# cell type numbers etc
+counts <- metadata %>% 
+  group_by(donor, timepoint, cell_type) %>% 
+  summarise(n_cells=n())  %>%
+  # add proportions
+  group_by(donor, timepoint) %>%
+  mutate(proportion = n_cells / sum(n_cells)) %>%
+  ungroup()
+
+head(counts)
+
+# bar chart of cell type number/distribution of each timepoint by cell type for each donor
+p6 <- counts %>%  
+  ggplot(mapping = aes(x = timepoint, y = n_cells, fill = cell_type)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Cell type counts") +
+  facet_wrap(facets = vars(donor))
+p6
+
+#ggsave("cell_type_numbers_per_donor_barplot.png", plot = p6, device = png, width = 15, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+
+# for all donors
+p7 <- counts %>%  
+  ggplot(mapping = aes(x = timepoint, y = n_cells, fill = cell_type)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Cell type counts")
+p7
+
+#ggsave("cell_type_numbers_overall_barplot.png", plot = p7, device = png, width = 15, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+
+# split by cell type, fixed axes
+p8 <- counts %>%  
+  ggplot(mapping = aes(x = timepoint, y = n_cells, fill = donor)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Cell type counts") +
+  facet_wrap(facets = vars(cell_type)) +
+  scale_fill_brewer(palette = "Accent")
+p8
+
+#ggsave("cell_type_numbers_by_celltype_fixed_barplot.png", plot = p8, device = png, width = 20, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+
+# split by cell type, free axes
+p9 <- counts %>%  
+  ggplot(mapping = aes(x = timepoint, y = n_cells, fill = donor)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Cell type counts") +
+  facet_wrap(facets = vars(cell_type), scales = "free_y") +
+  scale_fill_brewer(palette = "Accent")
+p9
+
+#ggsave("cell_type_numbers_by_celltype_barplot.png", plot = p9, device = png, width = 20, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+
+# proportion bar chart of cell type number/distribution of each timepoint by cell type for each donor
+p10 <- counts %>%  
+  ggplot(mapping = aes(x = timepoint, y = proportion, fill = cell_type)) +
+  geom_bar(position = "stack", stat = "identity") +
+  labs(title = "Cell type proportion") +
+  facet_wrap(facets = vars(donor))
+p10
+
+#ggsave("cell_type_proportion_per_donor_barplot.png", plot = p10, device = png, width = 15, height = 12, unit = "cm", path = paste0(plot_path, "cell_types/") )
+
+```
+
+
+```{r}
+rm(counts, c1, c2, c3, c4, d1, d2, d3, d4, d5, d6, m1, m2, m3, m4, markers_binary_br, markers_binary_br_bm, markers_binary_br2, markers_binary_sp, markers_long_br, markers_long_br_bm, markers_long_br2, markers_long_sp, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, cell_type, marker_genes, marker_genes_bm, marker_genes_broad, marker_genes1, x)
 ```
