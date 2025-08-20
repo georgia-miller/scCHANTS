@@ -68,6 +68,7 @@ p3 <- DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "cell_type", split.b
 p3
 
 # plot per donor per timepoint
+donors <- unique(scCHANTS_pbmc$donor)
 x <- lapply(donors, function(X) {
   DimPlot(
     subset(scCHANTS_pbmc, donor == X),
@@ -124,15 +125,31 @@ m5
 
 ## Dotplots
 ```{r}
-marker_genes_s <- c("CCR7", "SELL", "TCF7", "IL2", "TNF", "IL4R", "CXCR6", "ITGA1", "CCL5", "GZMB", "GZMK", "FOXP3", "IL2RA", "CTLA4", "IFNG", "CCL4", "CCL3", "PRF1", "NKG7")
+marker_genes_s <- c("CCR7", "SELL", "TCF7", "IL2", "TNF", "IL4R", "FOXP3", "IL2RA", "CTLA4", "CXCR6", "ITGA1", "CCL5", "GZMB", "GZMK", "IFNG", "CCL4", "CCL3", "PRF1", "NKG7")
 
-d7 <- pheatmap(scCHANTS_pbmc, features = marker_genes_s, assay = "RNA", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+d7 <- DotPlot(scCHANTS_pbmc, features = marker_genes_s, assay = "SCT", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
   coord_flip() +
   ggtitle("scCHANTS T subtypes by S marker exp run1")
 d7
 
-#ggsave("clusters_by_BMmarkerexp_dotplot.pdf", plot = d7, device = pdf, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
-#ggsave("clusters_by_BMmarkerexp_dotplot.png", plot = d7, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "cell_types/") )
+#ggsave("clusters_by_Smarkerexp_dotplot.png", plot = d7, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "DEGs/") )
+
+
+scCHANTS_pbmc_UT <- subset(scCHANTS_pbmc, subset = treatment == "UT")
+scCHANTS_pbmc_T <- subset(scCHANTS_pbmc, subset = timepoint != "benchmark" & treatment == "T")
+
+d8 <- DotPlot(scCHANTS_pbmc_UT, features = marker_genes_s, assay = "SCT", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+  coord_flip() +
+  ggtitle("scCHANTS T subtypes by S marker exp UT")
+d8
+
+d9 <- DotPlot(scCHANTS_pbmc_T, features = marker_genes_s, assay = "SCT", group.by = "seurat_clusters", cols = c("lightgrey", "blue")) +
+  coord_flip() +
+  ggtitle("scCHANTS T subtypes by S marker exp T")
+d9
+
+#ggsave("clusters_by_Smarkerexp_UT_dotplot.png", plot = d8, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "DEGs/") )
+#ggsave("clusters_by_Smarkerexp_T_dotplot.png", plot = d9, device = png, width = 20, height = 14, unit = "cm", bg = "white", path = paste0(plot_path, "DEGs/") )
 ```
 
 ## Heatmap
@@ -374,6 +391,111 @@ pheatmap::pheatmap(mat = top_acts_mat,
   )
 ```
 
+functionalised
+```{r}
+
+plot_expr <- function(object, donor = FALSE, target_genes, plot = "heatmap", metric = "mean", clusters = FALSE, cell_types = FALSE, timepoint = FALSE, treatment = FALSE, metadata_extra = FALSE, metadata_extra_filter, assay = "SCT", layer = "data"){
+  
+  stopifnot(plot %in% c("heatmap", "dotplot", "vlnplot"),
+            donor == FALSE | donor %in% object@meta.data$donor,
+            metric %in% c("mean", "median") )
+  
+  # filter metadata based on which arguments are given
+  cols_to_extract <- c(
+    if(!identical(clusters, FALSE)) "seurat_clusters",
+    if(!identical(cell_types, FALSE)) "cell_type",
+    if(!identical(timepoint, FALSE)) "timepoint",
+    if(!identical(treatment, FALSE)) "treatment",
+    if(!identical(metadata_extra, FALSE)) metadata_extra
+  )
+  
+  metadata_red <- object@meta.data %>% select(all_of(cols_to_extract))
+  
+  # Apply filters only if argument != FALSE
+  if (!identical(clusters, FALSE)) {
+    metadata_red <- metadata_red %>% 
+      filter(seurat_clusters %in% clusters)
+  }
+  
+  if (!identical(cell_types, FALSE)) {
+    metadata_red <- metadata_red %>% 
+      filter(cell_type %in% cell_types)
+  }
+  
+  if (!identical(timepoint, FALSE)) {
+    metadata_red <- metadata_red %>% 
+      filter(timepoint %in% timepoint)
+  }
+  
+  if (!identical(treatment, FALSE)) {
+    metadata_red <- metadata_red %>% 
+      filter(treatment %in% treatment)
+  }
+  
+  if (!identical(metadata_extra, FALSE)) {
+    metadata_red <- metadata_red %>% 
+      filter(.data[[metadata_extra]] %in% metadata_extra_filter)
+  }
+  
+  # extract matrix of values for target genes
+  expr_mat <- GetAssayData(object, assay = assay, layer = layer)[target_genes, ]
+  
+  # convert to long df
+  expr_df <- as.data.frame(as.matrix(expr_mat)) %>%
+    rownames_to_column("gene") %>%
+    pivot_longer(-gene, names_to = "cell", values_to = "expression") %>%
+    inner_join(metadata_red %>% rownames_to_column("cell"), by = "cell") %>%
+    group_by(across(all_of(cols_to_extract)))
+  
+  summary_df <- expr_df %>%
+    group_by(gene, across(all_of(cols_to_extract))) %>% 
+    summarise(
+      expr = if(metric == "mean") mean(expression) else if (metric == "median") median(expression),
+      .groups = "drop"
+    )
+  
+  # plot dotplot
+  # ! change below
+  # if(plot == "dotplot"){
+  #    p <- ggplot(summary_df, aes(x = factor(timepoint, levels = c(0,7,28)), 
+  #                                            y = mean_expression, 
+  #                                            color = seurat_clusters, 
+  #                                            group = seurat_clusters)) +
+  #              geom_line(size = 1) +
+  #              geom_point(size = 3) +
+  #              facet_wrap(gene~treatment, scales = "free_y") +
+  #              labs(x = "Timepoint (days)", y = "Mean Expression", color = "Cluster") +
+  #              theme_minimal(base_size = 14) 
+  #   
+  #   
+  # }
+  # 
+  #   if(plot == "vlnplot"){
+  #    p <- 
+  #   
+  #   
+  # }
+
+      print("done")
+             
+}
+
+# to test
+  plot_expr(object = scCHANTS_pbmc, donor = c("055", "096"),  metric = "mean", target_genes = c("CTLA4", "FOXP3"), plot = "heatmap", clusters = FALSE, cell_types = FALSE, timepoint = FALSE, treatment = FALSE, metadata_extra = FALSE, metadata_extra_filter, assay = "SCT", layer = "data")
+  object = scCHANTS_pbmc
+  donor = c("055", "096")
+  target_genes = c("CTLA4", "FOXP3")
+  plot = "heatmap"
+  clusters = c("0", "1")
+  cell_types = FALSE
+  timepoint = "0"
+  treatment = FALSE
+  metadata_extra = "hash.ID"
+  metadata_extra_filter = "HTO-11" # can only be an arg if metadata_extra set to true, can be a single metadata column or multiple in a vector
+  assay = "SCT"
+  layer = "data"
+  metric = "mean"
+```
 
 
 

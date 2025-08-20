@@ -317,6 +317,7 @@ DimPlot(scCHANTS_pbmc, reduction = "umap", group.by = "cell_type", split.by = "t
 #ggsave("by_timepoint_umap.png", plot = p3, device = png, width = 28, height = 12, unit = "cm", path = plot_path)
 
 # plot per donor per timepoint
+donors <- unique(scCHANTS_pbmc$donor)
 x <- lapply(donors, function(X) {
   DimPlot(
     subset(scCHANTS_pbmc, donor == X),
